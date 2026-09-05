@@ -61,3 +61,14 @@ we have a global error handler that will catch all exceptions this will return a
 
 Error Handler image
 
+## Setup Instructions
+
+### Prerequisites
+Node.js v16+
+
+npm
+
+OpenSSL
+
+### Installation
+Clone the repo open bash: git clone 

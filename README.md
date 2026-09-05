@@ -71,4 +71,24 @@ npm
 OpenSSL
 
 ### Installation
-Clone the repo open bash: git clone 
+Clone the repo open bash: git clone https://github.com/ChippsEthan/INSY7314Group.git , then cd hustlehub-backend
+
+#### installing the dependencies
+Bash
+
+npm install
+
+#### create a .env file
+
+env 
+
+PORT=5000
+JWT_SECRET=your_super_secret_jwt_key_change_this_in_production_min32chars
+SALT_ROUNDS=10
+NODE_ENV=development
+
+#### Generate the SSL certificate
+
+bash
+
+

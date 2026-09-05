@@ -55,3 +55,9 @@ JWT verify image
 we use something called express validator to check all incoming data and make sure it is valid before we process the data, this keeps us safe from injection attacks and ensures our data's integrity.
 
 Validation code image
+
+### Secure Error Handling
+we have a global error handler that will catch all exceptions this will return a slandered JSON response without giving away our file paths , configuration values or our stack traces.
+
+Error Handler image
+

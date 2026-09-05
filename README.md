@@ -34,3 +34,24 @@ The Request flow moves as follows: Client to HTTPS to Express Routes to the vali
 
 ## Backend Structure
 At the moment our code is structured as follows. The controllers deal with the Login logic and the registration of users , The middleware is where our JWT verification validation and error handling is , the models currently store our users in memory data and the routes define our API endpoints for the platform.
+
+## Security Implementation
+
+### Password Hashing
+We do not store our passwords in plain text we use bcrypt with 10 salt rounds *
+
+Bycrypt Hash image needed
+
+Bycrypt compare image needed
+
+### JWT Authentication 
+When you login successfully a JWT token will be generated containing the users ID and their role , this JWT token is then sent to the Authorization header for protected routes.
+
+JWT sign image
+
+JWT verify image
+
+### Input validation
+we use something called express validator to check all incoming data and make sure it is valid before we process the data, this keeps us safe from injection attacks and ensures our data's integrity.
+
+Validation code image

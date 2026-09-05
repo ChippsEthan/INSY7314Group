@@ -1,2 +1,14 @@
-# INSY7314Group
-Group project INSY7314
+# HustleHub+ Freelance marletplace
+
+## Table of content
+  System overview
+  System architecture 
+  Backend Structure
+  Security Implementation
+  Setup
+  API documentation
+  Postman testing
+  Demonstration video
+  Contributions
+  
+  

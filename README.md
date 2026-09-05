@@ -31,4 +31,6 @@ The system follows the MERN architecture. MongoDB will be used during our part 2
 #Diagram#
 
 The Request flow moves as follows: Client to HTTPS to Express Routes to the validation to Controller to a response.
-  
+
+## Backend Structure
+At the moment our code is structured as follows. The controllers deal with the Login logic and the registration of users , The middleware is where our JWT verification validation and error handling is , the models currently store our users in memory data and the routes define our API endpoints for the platform.

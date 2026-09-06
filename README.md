@@ -132,9 +132,17 @@ Endpoint: POST/api/auth/register
 
 Body:
 
-{ "username": "johndoe", "email": "john@example.com", "password": "SecurePass123", 
-"role": "client" 
-}
+{ "username": "someone", "email": "someone@gmail.com", "password": "password", "role": "client" }
+
+Validation Rules
+
+The *Username* must be atleast 3 characters.
+
+The *Email* must be a valid email
+
+The *Password* must have a number a uppercase and a lower case
+
+The *Role* of the user has to be either a Client , Admin or a Freelancer
 
 
 

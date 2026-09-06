@@ -123,4 +123,19 @@ npm start
 Https://localhost:5000.
 
 ## API Documentation
-*
+
+The URL: https://localhost:5000/api
+
+### Registering a new user
+
+Endpoint: POST/api/auth/register
+
+Body:
+
+{ "username": "johndoe", "email": "john@example.com", "password": "SecurePass123", 
+"role": "client" 
+}
+
+
+
+

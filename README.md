@@ -214,3 +214,12 @@ If a email is invalid     { "status": "error", "message": "Validation failed", "
 
 #### Missing a password
 <img width="940" height="465" alt="image" src="https://github.com/user-attachments/assets/d2866ddb-cca2-465b-9c4c-10408aa51cfb" />
+
+### Logging in
+
+#### Success
+<img width="940" height="469" alt="image" src="https://github.com/user-attachments/assets/5c902384-9f7e-44e2-9adc-9bcb51b232af" />
+
+#### login failed password
+<img width="940" height="466" alt="image" src="https://github.com/user-attachments/assets/6a068370-f2a0-430c-9292-7d807ac68f5d" />
+

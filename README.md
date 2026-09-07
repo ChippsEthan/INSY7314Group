@@ -134,7 +134,7 @@ Body:
 
 { "username": "someone", "email": "someone@gmail.com", "password": "password", "role": "client" }
 
-Validation Rules
+#### Validation Rules
 
 The *Username* must be atleast 3 characters.
 
@@ -145,5 +145,8 @@ The *Password* must have a number a uppercase and a lower case
 The *Role* of the user has to be either a Client , Admin or a Freelancer
 
 
+#### A success in a new user registeration
+
+{ "status": "success", "message": "User has been registered", "data": { "user": {  "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab", "username": "someone", "email": "someone@gmail.com", "role": "client", "createdAt": "2026-01-15T10:30:00.000Z" } } }
 
 

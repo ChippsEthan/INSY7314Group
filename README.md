@@ -223,3 +223,13 @@ If a email is invalid     { "status": "error", "message": "Validation failed", "
 #### login failed password
 <img width="940" height="466" alt="image" src="https://github.com/user-attachments/assets/6a068370-f2a0-430c-9292-7d807ac68f5d" />
 
+### Protected Route 
+
+#### With a token
+<img width="940" height="465" alt="image" src="https://github.com/user-attachments/assets/8ba394b3-0599-4580-8e4a-07bc4cff4309" />
+
+#### without a token
+<img width="940" height="470" alt="image" src="https://github.com/user-attachments/assets/f48d3776-4b6f-4570-b12b-1677d07c2164" />
+
+##Youtube Link
+### Link:

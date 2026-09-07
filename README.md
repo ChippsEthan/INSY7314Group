@@ -186,3 +186,31 @@ invalid login credentials  { "status": "error", "message": "Invalid email or pas
 if you are missing a required field { "status": "error", "message": "Validation failed"}
 
 If a email is invalid     { "status": "error", "message": "Validation failed", "errors": [{ "field": "email"}] }
+
+
+### Response Formats
+
+#### Success Response 
+
+{ "status": "success", "message": "Success message" }
+
+#### Error Response
+
+{ "status": "error", "message": "Error message"}
+
+
+## Postman Testing
+
+### Server Health
+<img width="940" height="461" alt="image" src="https://github.com/user-attachments/assets/99fae2b5-f7c9-485d-aa8c-c5012783842d" />
+
+### Registration
+
+#### Success
+<img width="940" height="462" alt="image" src="https://github.com/user-attachments/assets/51933216-b359-439d-a05c-7dfc15df18c2" />
+
+#### Duplicate
+<img width="940" height="462" alt="image" src="https://github.com/user-attachments/assets/0aa70b93-9ae7-4eff-82d3-ef8eb626bb98" />
+
+#### Missing a password
+<img width="940" height="465" alt="image" src="https://github.com/user-attachments/assets/d2866ddb-cca2-465b-9c4c-10408aa51cfb" />

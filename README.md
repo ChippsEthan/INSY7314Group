@@ -177,3 +177,12 @@ The *password* must be valid and is required
 #### a success in logging in
 
 { "status": "success", "message": "Logged in successfully", "data": { "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9", "user": { "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab", "username": "someone", "email": "someone@gmail.com", "role": "client", "createdAt": "2026-01-15T10:30:00.000Z"}}}
+
+
+#### Error Responses
+
+invalid login credentials  { "status": "error", "message": "Invalid email or password" }
+
+if you are missing a required field { "status": "error", "message": "Validation failed"}
+
+If a email is invalid     { "status": "error", "message": "Validation failed", "errors": [{ "field": "email"}] }

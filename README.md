@@ -28,7 +28,8 @@
 ## System Architecture
 The system follows the MERN architecture. MongoDB will be used during our part 2 as we are are currently storing user data in memory.
 
-#Diagram#
+<img width="1521" height="518" alt="image" src="https://github.com/user-attachments/assets/447d9b38-479a-4875-84ce-d3253a518ef9" />
+
 
 The Request flow moves as follows: Client to HTTPS to Express Routes to the validation to Controller to a response.
 
@@ -149,4 +150,12 @@ The *Role* of the user has to be either a Client , Admin or a Freelancer
 
 { "status": "success", "message": "User has been registered", "data": { "user": {  "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab", "username": "someone", "email": "someone@gmail.com", "role": "client", "createdAt": "2026-01-15T10:30:00.000Z" } } }
 
+#### Error Responses
 
+An email is already registered    { "status": "error", "message": "Email already registered" }
+
+If a field that is required is missing    { "status": "error", "message": "Validation failed"}
+
+If a user creates a weak password     { "status": "error", "message": "Validation failed", "errors": [{ "field": "password"}] }
+
+If a email is invalid     { "status": "error", "message": "Validation failed", "errors": [{ "field": "email"}] }

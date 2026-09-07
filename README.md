@@ -17,7 +17,6 @@
   
   Demonstration video. 
   
-  Contributions. 
   
   ## System Overview
   **HustleHub+** is a safe and secure marketplace for freelancers. this is part 1 of the platform which will be focusing on the secure backend foundation.

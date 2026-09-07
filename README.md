@@ -230,5 +230,5 @@ If a email is invalid     { "status": "error", "message": "Validation failed", "
 #### without a token
 <img width="940" height="470" alt="image" src="https://github.com/user-attachments/assets/f48d3776-4b6f-4570-b12b-1677d07c2164" />
 
-##Youtube Link
+## Youtube Link
 ### Link:

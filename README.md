@@ -103,7 +103,7 @@ npm install
 env 
 
 PORT=5000
-JWT_SECRET=GNul9gJjBlmcqYvUkcLWMqEGO19U2AYh
+JWT_SECRET=Place_Holder
 SALT_ROUNDS=10
 NODE_ENV=development
 
@@ -121,6 +121,9 @@ bash
 npm start
 
 Https://localhost:5000.
+
+#NOTE:
+In Postman, go to Settings then, SSL certificate verification then, turn OFF otherwise requests to https://localhost:5000 will fail.
 
 ## API Documentation
 

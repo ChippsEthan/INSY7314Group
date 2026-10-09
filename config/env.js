@@ -1,0 +1,22 @@
+// config/env.js
+require('dotenv').config();
+
+const config = {
+  port: parseInt(process.env.PORT, 10) || 5000,
+  jwtSecret: process.env.JWT_SECRET,
+  saltRounds: parseInt(process.env.SALT_ROUNDS, 10) || 10,
+  mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/hustlehub',
+  nodeEnv: process.env.NODE_ENV || 'development',
+};
+
+// Fail if JWT secret is missing
+if (!config.jwtSecret) {
+  console.error('[CONFIG] FATAL: JWT_SECRET is not defined in environment variables.');
+  process.exit(1);
+}
+
+if (config.jwtSecret.length < 32) {
+  console.warn('[CONFIG] WARNING: JWT_SECRET should be at least 32 characters long.');
+}
+
+module.exports = config;

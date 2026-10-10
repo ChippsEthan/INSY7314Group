@@ -1,51 +1,43 @@
-const { v4: uuidv4 } = require('uuid');
+// models/User.js
+const mongoose = require('mongoose');
 
-// In-memory user store (replaced with MongoDB in Part 2)
-const users = [];
+const userSchema = new mongoose.Schema(
+  {
+    username: {
+      type: String,
+      required: [true, 'Username is required'],
+      trim: true,
+      minlength: [3, 'Username must be at least 3 characters'],
+    },
+    email: {
+      type: String,
+      required: [true, 'Email is required'],
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    password: {
+      type: String,
+      required: [true, 'Password is required'],
+    },
+    role: {
+      type: String,
+      enum: ['client', 'freelancer', 'admin'],
+      default: 'client',
+    },
+    income: {
+      type: Number,
+      default: 0,
+    },
+  },
+  { timestamps: true }
+);
 
-const VALID_ROLES = ['client', 'freelancer', 'admin'];
-
-
-//Creates a new user object (password must already be hashed before calling this).
-
-function createUser({ username, email, password, role = 'client' }) {
-  if (!VALID_ROLES.includes(role)) {
-    throw new Error(`Invalid role. Must be one of: ${VALID_ROLES.join(', ')}`);
-  }
-
-  const user = {
-    id: uuidv4(),
-    username: username.trim(),
-    email: email.toLowerCase().trim(),
-    password, // bcrypt hash
-    role,
-    createdAt: new Date().toISOString(),
-  };
-
-  users.push(user);
+// Remove password when sending user as JSON
+userSchema.methods.toJSON = function () {
+  const user = this.toObject();
+  delete user.password;
   return user;
-}
+};
 
-
-//Find a user by email (case-insensitive).
- 
-function findByEmail(email) {
-  return users.find((u) => u.email === email.toLowerCase().trim()) || null;
-}
-
-
-//Find a user by ID.
-
-function findById(id) {
-  return users.find((u) => u.id === id) || null;
-}
-
-
-//Returns a safe user object (no password field).
-
-function sanitiseUser(user) {
-  const { password, ...safe } = user;
-  return safe;
-}
-
-module.exports = { createUser, findByEmail, findById, sanitiseUser, VALID_ROLES };
+module.exports = mongoose.model('User', userSchema);

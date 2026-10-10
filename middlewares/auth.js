@@ -1,60 +1,53 @@
+// middlewares/auth.js
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config/env');
-const { findById } = require('../models/User');
 
-
-//Protects routes by verifying the JWT in the Authorization header.
-//Attaches the decoded user payload to req.user on success.
- 
-//Expected header:  Authorization: Bearer <token>
-
+// Verify JWT token on protected routes
 const verifyToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
+  // Get token from Authorization header
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith('Bearer ')
+    ? authHeader.split(' ')[1]
+    : null;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!token) {
     return res.status(401).json({
       status: 401,
-      message: 'Access denied. No token provided.',
+      message: 'No token provided. Please log in.',
     });
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
     const decoded = jwt.verify(token, jwtSecret);
-
-    // Confirm the user exists
-    const user = findById(decoded.id);
-    if (!user) {
-      return res.status(401).json({
-        status: 401,
-        message: 'Token is valid but the associated user no longer exists.',
-      });
-    }
-
-    // Attach minimal payload to request
-    req.user = { id: decoded.id, role: decoded.role };
+    req.user = decoded; // { id, role }
     next();
   } catch (err) {
-    if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ status: 401, message: 'Token has expired.' });
-    }
-    return res.status(401).json({ status: 401, message: 'Invalid token.' });
+    return res.status(401).json({
+      status: 401,
+      message: 'Invalid or expired token.',
+    });
   }
 };
 
+// Role-based access control
+const requireRole = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        status: 401,
+        message: 'Authentication required.',
+      });
+    }
 
-//Role-based access guard. Use after verifyToken.
-//Usage:  router.get('/admin', verifyToken, requireRole('admin'), handler)
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        status: 403,
+        message: `Access denied. Required role: ${roles.join(' or ')}.`,
+      });
+    }
 
-const requireRole = (...roles) => (req, res, next) => {
-  if (!req.user || !roles.includes(req.user.role)) {
-    return res.status(403).json({
-      status: 403,
-      message: 'Forbidden. You do not have permission to access this resource.',
-    });
-  }
-  next();
+    next();
+  };
 };
 
 module.exports = { verifyToken, requireRole };

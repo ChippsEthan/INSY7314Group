@@ -1,15 +1,17 @@
+// controllers/authController.js
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { createUser, findByEmail, findById, sanitiseUser } = require('../models/User');
+const User = require('../models/User');
 const { jwtSecret, saltRounds } = require('../config/env');
 
-// POST /api/auth/register 
+// POST /api/auth/register
 const register = async (req, res, next) => {
   try {
     const { username, email, password, role } = req.body;
 
     // Duplicate email check
-    if (findByEmail(email)) {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
       return res.status(400).json({
         status: 400,
         message: 'An account with this email address already exists.',
@@ -19,7 +21,8 @@ const register = async (req, res, next) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    const newUser = createUser({
+    // Create user
+    const newUser = await User.create({
       username,
       email,
       password: hashedPassword,
@@ -31,7 +34,7 @@ const register = async (req, res, next) => {
     return res.status(201).json({
       status: 201,
       message: 'Registration successful.',
-      user: sanitiseUser(newUser),
+      user: newUser.toJSON(),
     });
   } catch (err) {
     next(err);
@@ -43,9 +46,8 @@ const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const user = findByEmail(email);
+    const user = await User.findOne({ email });
 
-    // avoid user enumeration
     const invalidCredentials = {
       status: 401,
       message: 'Invalid email or password.',
@@ -63,7 +65,7 @@ const login = async (req, res, next) => {
 
     // Generate JWT
     const token = jwt.sign(
-      { id: user.id, role: user.role },
+      { id: user._id.toString(), role: user.role },
       jwtSecret,
       { expiresIn: '7d', algorithm: 'HS256' }
     );
@@ -74,18 +76,17 @@ const login = async (req, res, next) => {
       status: 200,
       message: 'Login successful.',
       token,
-      user: sanitiseUser(user),
+      user: user.toJSON(),
     });
   } catch (err) {
     next(err);
   }
 };
 
-// GET /api/auth/me
-const me = (req, res, next) => {
+// GET /api/auth/me (protected)
+const me = async (req, res, next) => {
   try {
-    // req.user is populated by verifyToken middleware
-    const user = findById(req.user.id);
+    const user = await User.findById(req.user.id);
 
     if (!user) {
       return res.status(404).json({ status: 404, message: 'User not found.' });
@@ -93,7 +94,7 @@ const me = (req, res, next) => {
 
     return res.status(200).json({
       status: 200,
-      user: sanitiseUser(user),
+      user: user.toJSON(),
     });
   } catch (err) {
     next(err);

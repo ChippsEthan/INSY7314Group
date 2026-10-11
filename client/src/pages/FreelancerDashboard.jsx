@@ -58,7 +58,7 @@ export default function FreelancerDashboard() {
       {/* Income summary */}
       {income && (
         <div style={styles.incomeCard}>
-          <h3 style={styles.sectionTitle}>💰 Income Summary</h3>
+          <h3 style={styles.sectionTitle}> Income Summary</h3>
           <p style={styles.incomeAmount}>Total Earned: <strong>R{(income.totalIncome || 0).toFixed(2)}</strong></p>
           <p style={styles.incomeAmount}>Total Bookings: <strong>{income.transactionCount || 0}</strong></p>
         </div>

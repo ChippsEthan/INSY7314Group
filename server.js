@@ -48,13 +48,19 @@ app.use(mongoSanitize());
 app.use(xssSanitize);
 
 // Rate limiting
-const authLimiter = rateLimit({
+const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
-  message: {
-    status: 429,
-    message: 'Too many attempts. Please try again in 15 minutes.',
-  },
+  skipSuccessfulRequests: true,
+  message: { status: 429, message: 'Too many attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { status: 429, message: 'Too many attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -79,8 +85,8 @@ app.get('/api/health', (req, res) => {
 });
 
 // API routes
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/register', registerLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/gigs', gigRoutes);

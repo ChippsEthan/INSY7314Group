@@ -61,7 +61,7 @@ Stack: MongoDB and Mongoose, Node.js with Express 4 over HTTPS, React 18 (Vite),
 
 This shows the components and where each sits in the MERN stack. The flow diagrams in section 4 show how data moves between them.
 
-add screenshot
+<td align="center"><b>Security</b><br><img src="docs/diagrams/architecture.png" width="300"></td>
 
 
 | MERN layer | Components | Responsibility |
@@ -79,7 +79,7 @@ Rectangles are processes, cylinders are data stores, dotted arrows are failure r
 
 ### 4.1 Registration
 
-add screenshot
+<td align="center"><b>Security</b><br><img src="docs/diagrams/register-dfd.png" width="300"></td>
 
 1. **React form:** react-hook-form checks the fields for usability only. The server never trusts it.
 2. **Perimeter:** HTTPS, Helmet headers, CORS origin check, and a 10 KB body limit (413 if exceeded).
@@ -92,7 +92,7 @@ add screenshot
 
 ### 4.2 Login
 
-add screenshot
+<td align="center"><b>Security</b><br><img src="docs/diagrams/login-dfd.png" width="300"></td>
 
 1. **React form:** checks that email and password are present and well formed.
 2. **Perimeter and sanitise:** same protections as registration.
@@ -142,16 +142,16 @@ We chose JWT because the SPA and API run on different origins and the API is sta
 
 <td align="center"><b>Security</b><br><img src="docs/diagrams/defence-in-depth.png" width="300"></td>
 
-#Key
-"1. Transport: HTTPS" as L1 
- "2. Headers: Helmet and CSP" as L2
- "3. CORS allow-list" as L3 #CCDEC8
- "4. 10 KB body limit and rate limiting" as L4
- "5. NoSQL and XSS sanitising" as L5
- "6. express-validator" as L6
- "7. Authentication: JWT" as L7
- "8. Authorisation: role and ownership" as L8
- "9. Data layer: Mongoose schema, bcrypt" as L9
+Key:
+1. "Transport: HTTPS" as L1 
+2. "Headers: Helmet and CSP" as L2
+3. "CORS allow-list" as L3 #CCDEC8
+4. "10 KB body limit and rate limiting" as L4
+5. "NoSQL and XSS sanitising" as L5
+6. "express-validator" as L6
+7. "Authentication: JWT" as L7
+8. "Authorisation: role and ownership" as L8
+9. "Data layer: Mongoose schema, bcrypt" as L9
 
 
 | Threat | How it could be exploited | Mitigation | Verified by |

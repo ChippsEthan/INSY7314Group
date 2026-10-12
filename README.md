@@ -140,7 +140,19 @@ We chose JWT because the SPA and API run on different origins and the API is sta
 
 ## 6. Security Risks and Mitigations
 
-add screenshot
+<td align="center"><b>Security</b><br><img src="docs/diagrams/defence-in-depth.png" width="300"></td>
+
+#Key
+"1. Transport: HTTPS" as L1 
+ "2. Headers: Helmet and CSP" as L2
+ "3. CORS allow-list" as L3 #CCDEC8
+ "4. 10 KB body limit and rate limiting" as L4
+ "5. NoSQL and XSS sanitising" as L5
+ "6. express-validator" as L6
+ "7. Authentication: JWT" as L7
+ "8. Authorisation: role and ownership" as L8
+ "9. Data layer: Mongoose schema, bcrypt" as L9
+
 
 | Threat | How it could be exploited | Mitigation | Verified by |
 |---|---|---|---|

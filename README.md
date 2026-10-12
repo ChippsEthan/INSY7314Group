@@ -61,7 +61,7 @@ Stack: MongoDB and Mongoose, Node.js with Express 4 over HTTPS, React 18 (Vite),
 
 This shows the components and where each sits in the MERN stack. The flow diagrams in section 4 show how data moves between them.
 
-<td align="center"><b>Security</b><br><img src="docs/diagrams/architecture.png" width="300"></td>
+<td align="center"><b>Architecture</b><br><img src="docs/diagrams/architecture.png" width="300"></td>
 
 
 | MERN layer | Components | Responsibility |
@@ -79,7 +79,7 @@ Rectangles are processes, cylinders are data stores, dotted arrows are failure r
 
 ### 4.1 Registration
 
-<td align="center"><b>Security</b><br><img src="docs/diagrams/register-dfd.png" width="300"></td>
+<td align="center"><b>Registration</b><br><img src="docs/diagrams/register-dfd.png" width="300"></td>
 
 1. **React form:** react-hook-form checks the fields for usability only. The server never trusts it.
 2. **Perimeter:** HTTPS, Helmet headers, CORS origin check, and a 10 KB body limit (413 if exceeded).
@@ -92,7 +92,7 @@ Rectangles are processes, cylinders are data stores, dotted arrows are failure r
 
 ### 4.2 Login
 
-<td align="center"><b>Security</b><br><img src="docs/diagrams/login-dfd.png" width="300"></td>
+<td align="center"><b>Login</b><br><img src="docs/diagrams/login-dfd.png" width="300"></td>
 
 1. **React form:** checks that email and password are present and well formed.
 2. **Perimeter and sanitise:** same protections as registration.

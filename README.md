@@ -293,7 +293,7 @@ Base URL `https://localhost:5000/api`. Protected routes need `Authorization: Bea
 
 ## 8. Setup: Running the Application
 
-**Prerequisites:** Node.js 18 or newer, Git, and a MongoDB database (the team's MongoDB Atlas cluster, or a local MongoDB Community Server). OpenSSL is optional. Install Newman for API tests with `npm install -g newman`.
+**Prerequisites:** Node.js 18 or newer, Git, OpenSSL, and a MongoDB database (MongoDB Atlas or a local MongoDB Community Server). Install Newman for the API tests with `npm install -g newman`.
 
 **Main dependencies** (all installed by `npm install`)
 
@@ -319,21 +319,16 @@ Base URL `https://localhost:5000/api`. Protected routes need `Authorization: Bea
    SALT_ROUNDS=10
    MONGO_URI=mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/hustlehub?appName=Cluster0
    ```
-   For the team's Atlas cluster, get the connection string **privately** from the project owner (never commit it) and ask them to add your IP under Atlas **Network Access**. For a local database use `mongodb://localhost:27017/hustlehub`.
+   For a local database use `mongodb://localhost:27017/hustlehub`.
 3. Generate the HTTPS certificate (press Enter through the prompts):
    ```bash
    openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
-   ```
-   *No OpenSSL (common on Windows)?* Use Node instead:
-   ```bash
-   npm install --no-save selfsigned@2.4.1
-   node -e "const s=require('selfsigned').generate([{name:'commonName',value:'localhost'}],{days:365,keySize:2048,algorithm:'sha256',extensions:[{name:'subjectAltName',altNames:[{type:2,value:'localhost'},{type:7,ip:'127.0.0.1'}]}]});require('fs').writeFileSync('key.pem',s.private);require('fs').writeFileSync('cert.pem',s.cert);console.log('done')"
    ```
 4. Start the API. You should see `MongoDB connected successfully` and the HTTPS address:
    ```bash
    npm start
    ```
-5. Trust the certificate once: open <https://localhost:5000/api/health> in Chrome, click **Advanced**, then **Proceed**. If there is no Proceed link, click the page and type `thisisunsafe`.
+5. Trust the certificate once: open <https://localhost:5000/api/health> in the browser, click **Advanced**, then **Proceed**.
 
 ### Frontend (Terminal 2)
 
@@ -350,13 +345,9 @@ Open <http://localhost:5173>. Register a freelancer and a client (use a private 
 | Problem | Fix |
 |---|---|
 | `JWT_SECRET is not defined` | `.env` is missing or not in the project root |
-| `key.pem or cert.pem not found` | Redo certificate step 3 |
-| `Could not connect to any servers` (Atlas) | Your IP is not on the Atlas Network Access list |
-| `Invalid scheme, expected connection string...` | `MONGO_URI` is broken (line break, spaces or quotes) |
-| Chrome `ERR_CERT_INVALID` | Type `thisisunsafe` on the error page, or regenerate the certificate (step 3) |
-| React app shows Network Error | Accept the certificate (step 5) |
-| `bcrypt` fails to load | `npm approve-scripts bcrypt` then `npm rebuild bcrypt` |
-| `429 Too many attempts` | Restart the server (limits are in memory) |
+| `key.pem or cert.pem not found` | Generate the certificate (step 3) |
+| React app shows Network Error | Accept the certificate in the browser (step 5) |
+| `429 Too many attempts` | Restart the server (the limits are held in memory) |
 
 **Screenshots of the running application**
 
@@ -403,7 +394,6 @@ Open <http://localhost:5173>. Register a freelancer and a client (use a private 
    npm run test:api
    ```
    This runs `newman run HustleHub_Part2.postman_collection.json --insecure` (`--insecure` is needed for the self-signed certificate).
-3. *Tip:* to keep test data out of the team's database, point your own `.env` at a separate database on the same cluster by changing only the name, for example `.../hustlehub_test?appName=Cluster0`.
 
 **Result: 47 requests, 88 assertions, 0 failed.**
 

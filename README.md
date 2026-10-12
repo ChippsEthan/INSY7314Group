@@ -430,3 +430,13 @@ we have a global error handler that will catch all exceptions this will return a
 
 ######## Without a token
 <img width="940" height="470" alt="image" src="https://github.com/user-attachments/assets/f48d3776-4b6f-4570-b12b-1677d07c2164" />
+
+
+
+
+## Reference
+
+We declare we used AI to help with the formatting and styling of the read me file.
+
+Diagrams.net, 2026. Diagrams.net – Free Online Diagram Software. [Online] Available at: Diagrams.net [Accessed 12 October 2026].
+

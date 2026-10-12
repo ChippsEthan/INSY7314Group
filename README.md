@@ -1,6 +1,6 @@
 # HustleHub+ Freelance Marketplace
 
-> **INSY7314 – POE Part 2.** A secure MERN-stack marketplace where **Clients** book services from **Freelancers**. Part 1 built the secure authentication backend. Part 2 adds MongoDB, gigs, bookings, transactions, income tracking, more security middleware, a React frontend and automated tests.
+INSY7314 – POE Part 2. A secure MERN-stack marketplace where Clients book services from Freelancers. Part 1 built the secure authentication backend. Part 2 adds MongoDB, gigs, bookings, transactions, income tracking, more security middleware, a React frontend and automated tests.
 
 ## Table of Contents
 
@@ -21,9 +21,9 @@
 
 ## 1. System Overview
 
-**The problem.** Freelancers and clients often deal through chat apps and DMs, where identities cannot be verified, work is not recorded and payments cannot be traced. A platform that holds credentials and earnings is also an attractive target for attackers.
+The problem. Freelancers and clients often deal through chat apps and DMs, where identities cannot be verified, work is not recorded and payments cannot be traced. A platform that holds credentials and earnings is also an attractive target for attackers.
 
-**Our solution.** HustleHub+ is a marketplace that treats security as a core requirement. Freelancers publish **gigs** (title, description, price, category). Clients browse and **book** them. Each booking creates a **transaction** linking client and freelancer, and the freelancer's **income** is updated automatically. Payment is **simulated**: no card data is collected or stored.
+Our solution. HustleHub+ is a marketplace that treats security as a core requirement. Freelancers publish gigs (title, description, price, category). Clients browse and book them. Each booking creates a **transaction** linking client and freelancer, and the freelancer's income is updated automatically. Payment is simulated: no card data is collected or stored.
 
 | Area | What it provides | Part |
 |---|---|---|
@@ -35,7 +35,7 @@
 | Frontend | React app: register, login, browse, book, dashboard | 2 |
 | Testing | Postman and Newman (API), React Testing Library with Vitest (UI) | 2 |
 
-**Stack:** MongoDB and Mongoose, Node.js with Express 4 over HTTPS, React 18 (Vite), plus bcrypt, jsonwebtoken, helmet, cors, express-rate-limit, express-mongo-sanitize and express-validator.
+Stack: MongoDB and Mongoose, Node.js with Express 4 over HTTPS, React 18 (Vite), plus bcrypt, jsonwebtoken, helmet, cors, express-rate-limit, express-mongo-sanitize and express-validator.
 
 ---
 
@@ -46,66 +46,30 @@
 | Register / log in | Yes | Yes | Yes | Yes |
 | View gigs | Yes | Yes | Yes | Yes |
 | Create a gig | 401 | 403 | Yes | 403 |
-| Edit / delete a gig | 401 | 403 | **Own gigs only** | 403 |
+| Edit / delete a gig | 401 | 403 | Own gigs only | 403 |
 | Book a gig | 401 | Yes | 403 | 403 |
 | View own bookings | 401 | Yes | Yes (on own gigs) | Yes (all) |
 | View income | 401 | 403 | Yes | 403 |
 
 - **Client:** hires freelancers. This is the default role at registration.
 - **Freelancer:** sells gigs, sees bookings made on them and tracks income.
-- **Administrator:** exists in the data model and RBAC middleware and can see all bookings. Admins cannot be created through the public form (it only accepts `client` or `freelancer`), so admin accounts are created directly in the database. Admin tooling is out of scope for this phase.
+- **Administrator:** exists in the data model and RBAC middleware and can see all bookings. Admins cannot be created through the public form (it only accepts client or freelancer), so admin accounts are created directly in the database. Admin tooling is out of scope for this phase.
 
 ---
 
 ## 3. System Architecture
 
-This shows the **components** and where each sits in the MERN stack. The flow diagrams in section 4 show how data moves between them.
+This shows the components and where each sits in the MERN stack. The flow diagrams in section 4 show how data moves between them.
 
-```mermaid
-flowchart LR
-  subgraph R["R - React client (Vite, port 5173)"]
-    direction TB
-    UI["Pages and components"]
-    RT["react-router-dom<br/>PrivateRoute"]
-    FV["react-hook-form<br/>client validation"]
-    SAN["DOMPurify<br/>safe rendering"]
-    AX["Axios instance<br/>adds JWT header"]
-    LS[("localStorage<br/>JWT and profile")]
-    UI --> RT
-    UI --> FV
-    UI --> SAN
-    UI --> AX
-    AX -.reads.-> LS
-  end
+add screenshot
 
-  subgraph EN["E and N - Express on Node.js (HTTPS, port 5000)"]
-    direction TB
-    SEC["Security middleware<br/>Helmet, CORS, 10 KB limit,<br/>rate limiters, sanitisers"]
-    RTS["Routes<br/>auth, gigs, bookings, users"]
-    VAL["express-validator<br/>verifyToken, requireRole"]
-    CTL["Controllers"]
-    ERR["Error handler<br/>generic JSON"]
-    SEC --> RTS --> VAL --> CTL
-    CTL -.errors.-> ERR
-  end
-
-  subgraph M["M - MongoDB"]
-    direction TB
-    MOD["Mongoose models<br/>User, Gig, Booking, Transaction"]
-    DB[("MongoDB Atlas")]
-    MOD --> DB
-  end
-
-  AX == "HTTPS, JSON, Bearer JWT" ==> SEC
-  CTL == "queries" ==> MOD
-```
 
 | MERN layer | Components | Responsibility |
 |---|---|---|
-| **R** React | `client/src` pages, components, `AuthContext`, `PrivateRoute`, `axiosInstance.js` | UI, route protection, session state, safe rendering |
-| **E** Express | `server.js`, `routes/`, `middlewares/` | HTTPS server, middleware pipeline, JWT and role checks, validation |
-| **N** Node.js | `controllers/`, `config/env.js` | Business logic (booking, income, ownership), configuration |
-| **M** MongoDB | `models/`, Atlas database | Persistent storage |
+| React  | client/src pages, components, AuthContext, PrivateRoute, axiosInstance.js | UI, route protection, session state, safe rendering |
+| Express | server.js, routes/, middlewares/ | HTTPS server, middleware pipeline, JWT and role checks, validation |
+| Node.js | controllers/, config/env.js | Business logic (booking, income, ownership), configuration |
+| MongoDB | models/, Atlas database | Persistent storage |
 
 ---
 
@@ -115,77 +79,29 @@ Rectangles are processes, cylinders are data stores, dotted arrows are failure r
 
 ### 4.1 Registration
 
-```mermaid
-flowchart TD
-  U(["New user"])
-  P1["1. React form<br/>client validation"]
-  P2["2. Perimeter<br/>HTTPS, Helmet, CORS, 10 KB limit"]
-  P3["3. Sanitise<br/>mongo-sanitize and XSS strip"]
-  P4["4. Rate limiter<br/>5 per 15 min per IP"]
-  P5["5. express-validator"]
-  P6["6. Duplicate email check"]
-  P7["7. bcrypt hash<br/>10 salt rounds"]
-  P8["8. Create user<br/>role defaults to client"]
-  D1[("users collection")]
-  R(["Response"])
+add screenshot
 
-  U -- "username, email, password, role" --> P1
-  P1 --> P2 --> P3 --> P4 --> P5 --> P6
-  P6 <-- "lookup" --> D1
-  P6 -- "email is new" --> P7 --> P8
-  P8 -- "save" --> D1
-  P8 -- "201, user without password" --> R
-  P4 -. "429" .-> R
-  P5 -. "400 validation failed" .-> R
-  P6 -. "400 email exists" .-> R
-```
-
-1. **React form:** `react-hook-form` checks the fields for usability only. The server never trusts it.
+1. **React form:** react-hook-form checks the fields for usability only. The server never trusts it.
 2. **Perimeter:** HTTPS, Helmet headers, CORS origin check, and a 10 KB body limit (413 if exceeded).
-3. **Sanitise:** `express-mongo-sanitize` strips `$` and `.` keys (NoSQL injection). A custom middleware strips HTML tags from all strings (XSS).
-4. **Rate limit:** 5 registrations per IP per 15 minutes, then `429`.
-5. **Validate:** username 3+ alphanumeric, valid email, password 8+ with upper, lower and digit, role `client` or `freelancer`. Failures return `400` with per-field errors.
-6. **Duplicate check:** an existing email returns `400`.
+3. **Sanitise:** express-mongo-sanitize strips $ and . keys (NoSQL injection). A custom middleware strips HTML tags from all strings (XSS).
+4. **Rate limit:** 5 registrations per IP per 15 minutes, then 429.
+5. **Validate:** username 3+ alphanumeric, valid email, password 8+ with upper, lower and digit, role client or freelancer. Failures return 400 with per-field errors.
+6. **Duplicate check:** an existing email returns 400.
 7. **Hash:** bcrypt with a per-user salt. The plain password is never stored or logged.
-8. **Save and respond:** `201` with the user minus the password hash. React then logs the user in.
+8. **Save and respond:** 201 with the user minus the password hash. React then logs the user in.
 
 ### 4.2 Login
 
-```mermaid
-flowchart TD
-  U(["Registered user"])
-  P1["1. React form<br/>client validation"]
-  P2["2. Perimeter and sanitise<br/>HTTPS, Helmet, CORS, limits"]
-  P3["3. Login rate limiter<br/>5 failed attempts per 15 min"]
-  P4["4. express-validator"]
-  P5["5. Find user by email"]
-  P6["6. bcrypt.compare"]
-  P7["7. Sign JWT<br/>id and role, HS256, 7 days"]
-  D1[("users collection")]
-  LS[("Browser localStorage")]
-  R(["Response"])
-
-  U -- "email, password" --> P1 --> P2 --> P3 --> P4 --> P5
-  P5 <-- "user record" --> D1
-  P5 -- "found" --> P6
-  P6 -- "match" --> P7
-  P7 -- "200, token and user" --> R
-  R -- "store token" --> LS
-  LS -- "Bearer token on later requests" --> U
-  P3 -. "429" .-> R
-  P4 -. "400" .-> R
-  P5 -. "401 invalid credentials" .-> R
-  P6 -. "401 invalid credentials" .-> R
-```
+add screenshot
 
 1. **React form:** checks that email and password are present and well formed.
 2. **Perimeter and sanitise:** same protections as registration.
-3. **Rate limit:** counts **failed** attempts only (5 per 15 minutes per IP), so genuine users are never locked out by their own successful logins.
+3. **Rate limit:** counts failed attempts only (5 per 15 minutes per IP), so genuine users are never locked out by their own successful logins.
 4. **Validate:** valid email, password present.
 5. **Look up** the user by email.
-6. **Compare** the password with the stored hash. An unknown email and a wrong password return the **same** `401 Invalid email or password.`, so attackers cannot tell which accounts exist.
-7. **Issue JWT:** payload is only `id` and `role`, signed with a secret from the environment, valid 7 days.
-8. **Browser:** React stores the token and an Axios interceptor sends `Authorization: Bearer <token>` on every later request. The server then runs `verifyToken`, then `requireRole`, then an ownership check in the controller.
+6. **Compare** the password with the stored hash. An unknown email and a wrong password return the same 401 Invalid email or password., so attackers cannot tell which accounts exist.
+7. **Issue JWT:** payload is only id and role, signed with a secret from the environment, valid 7 days.
+8. **Browser:** React stores the token and an Axios interceptor sends Authorization: Bearer <token> on every later request. The server then runs verifyToken, then requireRole, then an ownership check in the controller.
 
 ---
 
@@ -193,7 +109,7 @@ flowchart TD
 
 ### 5.1 JWT instead of server-side sessions
 
-| | JWT in `Authorization` header (**chosen**) | Server-side sessions |
+| | JWT in Authorization header  | Server-side sessions |
 |---|---|---|
 | State | In the signed token | In a server session store |
 | Cost per request | Signature check only | Store lookup every request |
@@ -201,66 +117,54 @@ flowchart TD
 | React SPA on another origin | Simple header | Needs cross-site cookies and CSRF protection |
 | Revocation | Hard until expiry | Easy |
 
-We chose JWT because the SPA and API run on different origins and the API is stateless JSON. **Trade-off:** a stolen token cannot be revoked early. We mitigate this with a pinned algorithm (HS256), a strong secret loaded from `.env` (the server refuses to start without it) and an expiry. A production system would use short-lived tokens plus refresh tokens.
+We chose JWT because the SPA and API run on different origins and the API is stateless JSON. **Trade-off:** a stolen token cannot be revoked early. We mitigate this with a pinned algorithm (HS256), a strong secret loaded from .env (the server refuses to start without it) and an expiry. A production system would use short-lived tokens plus refresh tokens.
 
 ### 5.2 Other decisions
 
 | Area | Chosen | Alternatives rejected | Why |
 |---|---|---|---|
-| Password storage | **bcrypt**, 10 rounds, per-user salt | Plain text; MD5 or SHA-256; Argon2id | Fast hashes can be brute-forced on GPUs. bcrypt is slow by design, mature and well supported. Argon2id is also strong but less established in Node |
-| Input validation | **express-validator** on the server | Client-only checks; Joi or Zod; manual `if` checks | The browser can be bypassed, so the server must validate. It plugs into Express middleware and includes sanitisers |
-| NoSQL injection | **express-mongo-sanitize** plus Mongoose type casting | Trusting Mongoose alone | Stops operator payloads such as `{"$gt": ""}` reaching queries |
-| XSS | Server tag stripping, React escaping, **DOMPurify**, CSP | One layer only | Overlapping layers. Output encoding is the primary defence |
-| Brute force and abuse | **express-rate-limit**: login 5 failed per 15 min, register 5 per 15 min, bookings 10 per hour | Account lockout; CAPTCHA; WAF | Lockout lets attackers lock out victims on purpose. CAPTCHA needs a third party. A WAF suits production |
-| Headers | **Helmet** (CSP, HSTS, nosniff, frame protection, hides `X-Powered-By`) | Hand-set headers | Easy to get wrong manually |
-| Access control | **RBAC** (`requireRole`) plus **ownership checks** in controllers | Hiding buttons in React; full ABAC | UI hiding is cosmetic. Ownership checks stop one freelancer editing another's gig |
-| Transport | **HTTPS** (self-signed in development) | Plain HTTP | Protects passwords and tokens in transit. Production would use a CA certificate |
+| Password storage | bcrypt, 10 rounds, per-user salt | Plain text; MD5 or SHA-256; Argon2id | Fast hashes can be brute-forced on GPUs. bcrypt is slow by design, mature and well supported. Argon2id is also strong but less established in Node |
+| Input validation | express-validator on the server | Client-only checks; Joi or Zod; manual if checks | The browser can be bypassed, so the server must validate. It plugs into Express middleware and includes sanitisers |
+| NoSQL injection | **express-mongo-sanitize** plus Mongoose type casting | Trusting Mongoose alone | Stops operator payloads such as {"$gt": ""} reaching queries |
+| XSS | Server tag stripping, React escaping, DOMPurify, CSP | One layer only | Overlapping layers. Output encoding is the primary defence |
+| Brute force and abuse | express-rate-limit: login 5 failed per 15 min, register 5 per 15 min, bookings 10 per hour | Account lockout; CAPTCHA; WAF | Lockout lets attackers lock out victims on purpose. CAPTCHA needs a third party. A WAF suits production |
+| Headers | Helmet (CSP, HSTS, nosniff, frame protection, hides X-Powered-By) | Hand-set headers | Easy to get wrong manually |
+| Access control | RBAC (requireRole) plus ownership checks in controllers | Hiding buttons in React; full ABAC | UI hiding is cosmetic. Ownership checks stop one freelancer editing another's gig |
+| Transport | HTTPS (self-signed in development) | Plain HTTP | Protects passwords and tokens in transit. Production would use a CA certificate |
 | Errors | Global handler with generic messages. One message for unknown email and wrong password | Raw errors | No stack paths, queries or account enumeration |
-| Secrets | `.env`, git-ignored. `*.pem` also ignored. Fails fast if `JWT_SECRET` is missing | Hard-coded secrets | Secrets never reach the repository |
-| Payments | **Simulated** transactions only | Real card processing | No card data held, so no PCI-DSS exposure |
-| Token storage | `localStorage` with Axios interceptor | `httpOnly` cookie | Simple with a separate API origin. XSS could read it, which we offset with DOMPurify, React escaping, tag stripping and CSP. Cookies would need CSRF protection |
+| Secrets | .env, git-ignored. *.pem also ignored. Fails fast if JWT_SECRET is missing | Hard-coded secrets | Secrets never reach the repository |
+| Payments | Simulated transactions only | Real card processing | No card data held, so no PCI-DSS exposure |
+| Token storage | localStorage with Axios interceptor | httpOnly cookie | Simple with a separate API origin. XSS could read it, which we offset with DOMPurify, React escaping, tag stripping and CSP. Cookies would need CSRF protection |
 
 ---
 
 ## 6. Security Risks and Mitigations
 
-```mermaid
-flowchart TB
-  A(["Incoming request"]) --> L1["1. Transport: HTTPS"]
-  L1 --> L2["2. Headers: Helmet and CSP"]
-  L2 --> L3["3. CORS allow-list"]
-  L3 --> L4["4. 10 KB body limit and rate limiting"]
-  L4 --> L5["5. NoSQL and XSS sanitising"]
-  L5 --> L6["6. express-validator"]
-  L6 --> L7["7. Authentication: JWT"]
-  L7 --> L8["8. Authorisation: role and ownership"]
-  L8 --> L9["9. Data layer: Mongoose schema, bcrypt"]
-  L9 --> Z(["Response via safe error handler"])
-```
+add screenshot
 
-| Threat (OWASP) | How it could be exploited | Mitigation | Verified by |
+| Threat | How it could be exploited | Mitigation | Verified by |
 |---|---|---|---|
-| Broken access control (A01) | Client creates gigs, freelancer edits another's gig, client reads income | `requireRole`, ownership checks | Newman folders 1 and 3 |
-| Cryptographic failures (A02) | Database leak, traffic sniffing | bcrypt, no password in responses, HTTPS, `.env` | Newman login tests |
-| NoSQL injection (A03) | `{"email": {"$gt": ""}}` bypasses login | mongo-sanitize, Mongoose, validator | Newman folder 4 |
-| XSS (A03) | `<script>` in a gig title runs in other browsers | Tag stripping, React escaping, DOMPurify, CSP | Newman folder 4, frontend test |
+| Broken access control (A01) | Client creates gigs, freelancer edits another's gig, client reads income | requireRole, ownership checks | Newman folders 1 and 3 |
+| Cryptographic failures (A02) | Database leak, traffic sniffing | bcrypt, no password in responses, HTTPS, .env | Newman login tests |
+| NoSQL injection (A03) | {"email": {"$gt": ""}} bypasses login | mongo-sanitize, Mongoose, validator | Newman folder 4 |
+| XSS (A03) | <script> in a gig title runs in other browsers | Tag stripping, React escaping, DOMPurify, CSP | Newman folder 4, frontend test |
 | Abuse and brute force (A04, A07) | Password guessing, spam accounts or bookings | Rate limiters, strong password rules, identical login errors | Newman folder 5 (429) |
 | Forged tokens (A07) | Tampered or unsigned JWT | Signed HS256 JWT with expiry | Newman folder 4 (401) |
 | Misconfiguration (A05) | Missing headers, verbose errors | Helmet, CORS allow-list, generic errors | Newman setup folder |
 | Denial of service | Huge bodies, floods | 10 KB limit (413), rate limits | Newman folder 4 |
-| Vulnerable components (A06) | Outdated packages | Locked versions, run `npm audit` before release | Manual |
+| Vulnerable components (A06) | Outdated packages | Locked versions, run npm audit before release | Manual |
 
-**Known limitations and next steps**
+Known limitations and next steps
 
-- **JWT lasts 7 days and cannot be revoked.** Use short-lived access tokens with refresh tokens.
-- **Token is in `localStorage`.** An `httpOnly` cookie plus CSRF token would remove XSS token theft.
-- **Helmet's default CSP is used.** A custom policy should be set on the host that serves the React app.
-- **Rate-limit counters are in memory.** They reset on restart. A Redis store would fix this.
-- **`updateGig` passes `req.body` to Mongoose** (mass-assignment risk). It should whitelist `title`, `description`, `price` and `category`.
-- **Gig and booking routes lack express-validator rules.** A negative price or malformed ID returns a generic `500` instead of a precise `400`.
-- **Stack traces are returned when `NODE_ENV=development`.** Always run production with `NODE_ENV=production`.
-- **The booking and income update are separate writes.** A MongoDB transaction would make them atomic.
-- **The dashboard *Edit* button points to a route that does not exist yet.** The `PUT /api/gigs/:id` endpoint is ready for it.
+- JWT lasts 7 days and cannot be revoked. Use short-lived access tokens with refresh tokens.
+- Token is in localStorage. An httpOnly cookie plus CSRF token would remove XSS token theft.
+- Helmet's default CSP is used. A custom policy should be set on the host that serves the React app.
+- Rate-limit counters are in memory. They reset on restart. A Redis store would fix this.
+- updateGig passes req.body to Mongoose (mass-assignment risk). It should whitelist title, description, price and category.
+- Gig and booking routes lack express-validator rules. A negative price or malformed ID returns a generic 500 instead of a precise 400.
+- Stack traces are returned when NODE_ENV=development. Always run production with NODE_ENV=production.
+- The booking and income update are separate writes. A MongoDB transaction would make them atomic.
+- The dashboard Edit button points to a route that does not exist yet. The PUT /api/gigs/:id endpoint is ready for it.
 
 ---
 
@@ -269,33 +173,33 @@ flowchart TB
 - **Gigs:** freelancers create gigs. Anyone can browse. Only the owner can edit or delete.
 - **Bookings:** a client books a gig and the price is copied from the gig. Payment is simulated.
 - **Transactions:** every booking creates a transaction linking client, freelancer and booking.
-- **Income:** the freelancer's income rises by the gig price on each booking. `GET /api/users/me/income` returns the total and the transaction list.
+- **Income:** the freelancer's income rises by the gig price on each booking. GET /api/users/me/income returns the total and the transaction list.
 - **Security additions:** NoSQL and XSS sanitising, rate limiting (login, register, bookings), Helmet and CSP, RBAC with ownership checks.
 
-Base URL `https://localhost:5000/api`. Protected routes need `Authorization: Bearer <token>`. Errors look like `{ "status": 403, "message": "..." }`, and validation errors add `"errors": [{ "field", "message" }]`.
+Base URL https://localhost:5000/api. Protected routes need Authorization: Bearer <token>. Errors look like { "status": 403, "message": "..." }, and validation errors add "errors": [{ "field", "message" }].
 
 | Endpoint | Access | Notes |
 |---|---|---|
-| `POST /auth/register` | Public | `username`, `email`, `password`, optional `role`. `201`, or `400` / `429` |
-| `POST /auth/login` | Public | `200` with `token` and `user`. `400`, `401`, `429` |
-| `GET /auth/me` | Logged in | Current user |
-| `GET /gigs` | Public | `{ count, gigs }` |
-| `GET /gigs/:id` | Public | `{ gig }` or `404` |
-| `POST /gigs` | Freelancer | `title`, `description`, `price`, `category`. `201`, `401`, `403` |
-| `PUT /gigs/:id` | Freelancer (owner) | `200`, `403` if not owner, `404` |
-| `DELETE /gigs/:id` | Freelancer (owner) | `200`, `403`, `404` |
-| `POST /bookings` | Client | `gigId`. Creates booking and transaction, raises income. `201`, `403`, `404`, `429` |
-| `GET /bookings/me` | Logged in | Client: own. Freelancer: on own gigs. Admin: all |
-| `GET /users/me/income` | Freelancer | `{ totalIncome, transactionCount, transactions }`. `403` for clients |
-| `GET /health` | Public | API status |
+| POST /auth/register | Public | username, email, password, optional role. 201, or 400 / 429 |
+| POST /auth/login | Public | 200 with token and user. 400, 401, 429 |
+| GET /auth/me | Logged in | Current user |
+| GET /gigs | Public | { count, gigs } |
+| GET /gigs/:id | Public | { gig } or 404 |
+| POST /gigs | Freelancer | title, description, price, category. 201, 401, 403 |
+| PUT /gigs/:id | Freelancer (owner) | 200, 403 if not owner, 404 |
+| DELETE /gigs/:id | Freelancer (owner) | 200, 403, 404 |
+| POST /bookings | Client | gigId. Creates booking and transaction, raises income. 201, 403, 404, 429 |
+| GET /bookings/me | Logged in | Client: own. Freelancer: on own gigs. Admin: all |
+| GET /users/me/income | Freelancer | { totalIncome, transactionCount, transactions }. 403 for clients |
+| GET /health | Public | API status |
 
 ---
 
 ## 8. Setup: Running the Application
 
-**Prerequisites:** Node.js 18 or newer, Git, OpenSSL, and a MongoDB database (MongoDB Atlas or a local MongoDB Community Server). Install Newman for the API tests with `npm install -g newman`.
+**Prerequisites:** Node.js 18 or newer, Git, OpenSSL, and a MongoDB database (MongoDB Atlas or a local MongoDB Community Server). Install Newman for the API tests with npm install -g newman.
 
-**Main dependencies** (all installed by `npm install`)
+**Main dependencies** (all installed by npm install)
 
 | Part | Packages |
 |---|---|
@@ -306,48 +210,49 @@ Base URL `https://localhost:5000/api`. Protected routes need `Authorization: Bea
 ### Backend (Terminal 1, project root)
 
 1. Clone and install:
-   ```bash
-   git clone https://github.com/ChippsEthan/INSY7314Group.git
-   cd INSY7314Group
+   
+   git clone https://github.com/ChippsEthan/INSY7314Group.git  
+   cd INSY7314Group  
    npm install
-   ```
-2. Create `.env` from the template (`cp .env.example .env`, or `copy .env.example .env` in PowerShell) and fill it in:
-   ```env
-   PORT=5000
-   NODE_ENV=development
-   JWT_SECRET=a_long_random_string_of_at_least_32_characters
-   SALT_ROUNDS=10
-   MONGO_URI=mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/hustlehub?appName=Cluster0
-   ```
-   For a local database use `mongodb://localhost:27017/hustlehub`.
+   
+2. Create .env from the template (cp .env.example .env, or copy .env.example .env in PowerShell) and fill it in:
+   env
+   
+   PORT=5000  
+   NODE_ENV=development  
+   JWT_SECRET=a_long_random_string_of_at_least_32_characters  
+   SALT_ROUNDS=10  
+   MONGO_URI=mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/hustlehub?appName=Cluster0  
+   
+   For a local database use mongodb://localhost:27017/hustlehub.
 3. Generate the HTTPS certificate (press Enter through the prompts):
-   ```bash
+   
    openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
-   ```
-4. Start the API. You should see `MongoDB connected successfully` and the HTTPS address:
-   ```bash
+   
+4. Start the API. You should see MongoDB connected successfully and the HTTPS address:
+  
    npm start
-   ```
+   
 5. Trust the certificate once: open <https://localhost:5000/api/health> in the browser, click **Advanced**, then **Proceed**.
 
 ### Frontend (Terminal 2)
 
-```bash
+
 cd client
 npm install
 cp .env.example .env     # contains VITE_API_URL=https://localhost:5000
 npm run dev
-```
+
 Open <http://localhost:5173>. Register a freelancer and a client (use a private window for the second), post a gig as the freelancer, book it as the client, then check the freelancer dashboard.
 
-`.env`, `key.pem` and `cert.pem` are git-ignored. Never commit them.
+.env, key.pem and cert.pem are git-ignored. Never commit them.
 
 | Problem | Fix |
 |---|---|
-| `JWT_SECRET is not defined` | `.env` is missing or not in the project root |
-| `key.pem or cert.pem not found` | Generate the certificate (step 3) |
+| JWT_SECRET is not defined | .env is missing or not in the project root |
+| key.pem or cert.pem not found | Generate the certificate (step 3) |
 | React app shows Network Error | Accept the certificate in the browser (step 5) |
-| `429 Too many attempts` | Restart the server (the limits are held in memory) |
+| 429 Too many attempts | Restart the server (the limits are held in memory) |
 
 **Screenshots of the running application**
 
@@ -375,27 +280,27 @@ Open <http://localhost:5173>. Register a freelancer and a client (use a private 
 
 ### 9.1 API tests: Postman and Newman
 
-`HustleHub_Part2.postman_collection.json` has **47 requests and 88 assertions**. It creates fresh users on every run, so no manual setup is needed.
+HustleHub_Part2.postman_collection.json has **47 requests and 88 assertions**. It creates fresh users on every run, so no manual setup is needed.
 
 | Folder | What it proves |
 |---|---|
-| 0. Setup | Security headers present (CSP, nosniff, HSTS, no `X-Powered-By`). Creates two freelancers and a client |
-| 1. Gig CRUD | Owner can create, read, update and delete. No token gives 401. Client gets 403. **Freelancer B cannot edit or delete freelancer A's gig (403).** Deleted gig gives 404 |
+| 0. Setup | Security headers present (CSP, nosniff, HSTS, no X-Powered-By). Creates two freelancers and a client |
+| 1. Gig CRUD | Owner can create, read, update and delete. No token gives 401. Client gets 403. Freelancer B cannot edit or delete freelancer A's gig (403). Deleted gig gives 404 |
 | 2. Bookings | Client booking creates a linked transaction. Freelancer booking gives 403. Missing or unknown gig rejected. Both roles can list bookings |
-| 3. Income | Freelancer sees total equal to the booked price. **Client gets 403.** No token gives 401 |
-| 4. Malicious input | XSS stripped. 12 KB payload gives 413. NoSQL injection gets no token. Tampered and `alg=none` JWTs give 401. Malformed ID leaks nothing |
+| 3. Income | Freelancer sees total equal to the booked price. Client gets 403. No token gives 401 |
+| 4. Malicious input | XSS stripped. 12 KB payload gives 413. NoSQL injection gets no token. Tampered and alg=none JWTs give 401. Malformed ID leaks nothing |
 | 5. Rate limiting | Seven rapid failed logins. The seventh returns **429** |
 
 **To run:**
 
-1. Start the API (`npm start`). It must be a **fresh start**, because the rate limiters are held in memory and the last folder fills the login limiter on purpose. Restart the server before every run.
+1. Start the API (npm start). It must be a fresh start, because the rate limiters are held in memory and the last folder fills the login limiter on purpose. Restart the server before every run.
 2. In a second terminal, from the project root:
-   ```bash
+   bash
    npm run test:api
-   ```
-   This runs `newman run HustleHub_Part2.postman_collection.json --insecure` (`--insecure` is needed for the self-signed certificate).
+   
+   This runs newman run HustleHub_Part2.postman_collection.json --insecure (--insecure is needed for the self-signed certificate).
 
-**Result: 47 requests, 88 assertions, 0 failed.**
+Result: 47 requests, 88 assertions, 0 failed.
 
 ![Newman run, part 1](docs/evidence/newman-run-1.png)
 
@@ -405,19 +310,19 @@ Open <http://localhost:5173>. Register a freelancer and a client (use a private 
 
 ### 9.2 Frontend tests
 
-React Testing Library with **Vitest** (the Vite-native runner, with the same `describe` / `it` / `expect` API as Jest).
+React Testing Library with **Vitest** (the Vite-native runner, with the same describe / it / expect API as Jest).
 
-```bash
+bash
 cd client
 npm test
-```
+
 
 | File | Covers |
 |---|---|
-| `src/pages/components.test.jsx` (10 tests) | **LoginPage** renders fields and shows "required" errors when empty. **GigCard** shows title, price and category. **Navbar** shows Login and Register when logged out, and username, Logout and freelancer links when logged in. **BookingConfirmationPage** shows the confirmation message, gig title and price |
-| `src/components/rbac.test.jsx` (5 tests) | **PrivateRoute** redirects logged-out users to `/login`, redirects a client away from a freelancer route and renders for the correct role. **Navbar** hides freelancer links from clients. **GigCard** removes `<script>` content (XSS) |
+| src/pages/components.test.jsx (10 tests) | LoginPage renders fields and shows "required" errors when empty. GigCard shows title, price and category. Navbar shows Login and Register when logged out, and username, Logout and freelancer links when logged in. **BookingConfirmationPage** shows the confirmation message, gig title and price |
+| src/components/rbac.test.jsx (5 tests) | PrivateRoute redirects logged-out users to /login, redirects a client away from a freelancer route and renders for the correct role. Navbar hides freelancer links from clients. GigCard removes <script> content (XSS) |
 
-**Result: 2 files, 15 tests, all passing.** The yellow React Router "Future Flag Warning" lines are harmless notices.
+Result: 2 files, 15 tests, all passing. The yellow React Router "Future Flag Warning" lines are harmless notices.
 
 ![Frontend tests passing](docs/evidence/frontend-tests.png)
 
@@ -425,7 +330,7 @@ npm test
 
 ## 10. Demonstration Video
 
-YouTube link: **ADD LINK HERE BEFORE SUBMISSION**
+YouTube link: ADD LINK HERE BEFORE SUBMISSION
 
 ---
 

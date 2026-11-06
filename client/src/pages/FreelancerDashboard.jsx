@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import api from '../api/axiosInstance';
 import { useAuth } from '../context/AuthContext';
+import TaxSummary from '../components/TaxSummary';
 
 export default function FreelancerDashboard() {
   const { user } = useAuth();
@@ -10,6 +11,7 @@ export default function FreelancerDashboard() {
   const [gigs, setGigs] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [income, setIncome] = useState(null);
+  const [tax, setTax] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleteError, setDeleteError] = useState('');
@@ -17,10 +19,12 @@ export default function FreelancerDashboard() {
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [gigsRes, bookingsRes, incomeRes] = await Promise.all([
+        const [gigsRes, bookingsRes, incomeRes, taxRes] = await Promise.all([
           api.get('/api/gigs'),
           api.get('/api/bookings/me'),
           api.get('/api/users/me/income'),
+          // A tax failure should not break the rest of the dashboard
+          api.get('/api/users/me/tax').catch(() => null),
         ]);
         // Filter to only this freelancer's gigs using their user ID from localStorage
         const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -28,6 +32,7 @@ export default function FreelancerDashboard() {
         setGigs(allGigs.filter((g) => g.freelancer === storedUser._id || g.freelancer?._id === storedUser._id));
         setBookings(bookingsRes.data.bookings || bookingsRes.data);
         setIncome(incomeRes.data);
+        setTax(taxRes ? taxRes.data : null);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -55,13 +60,17 @@ export default function FreelancerDashboard() {
       <h2 style={styles.heading}>Freelancer Dashboard</h2>
       <p style={styles.welcome}>Welcome, {user?.username}</p>
 
-      {/* Income summary */}
-      {income && (
-        <div style={styles.incomeCard}>
-          <h3 style={styles.sectionTitle}> Income Summary</h3>
-          <p style={styles.incomeAmount}>Total Earned: <strong>R{(income.totalIncome || 0).toFixed(2)}</strong></p>
-          <p style={styles.incomeAmount}>Total Bookings: <strong>{income.transactionCount || 0}</strong></p>
-        </div>
+      {/* Income and tax overview */}
+      {income && tax ? (
+        <TaxSummary income={income} tax={tax} />
+      ) : (
+        income && (
+          <div style={styles.incomeCard}>
+            <h3 style={styles.sectionTitle}>Income Summary</h3>
+            <p style={styles.incomeAmount}>Total Earned: <strong>R{(income.totalIncome || 0).toFixed(2)}</strong></p>
+            <p style={styles.incomeAmount}>Total Bookings: <strong>{income.transactionCount || 0}</strong></p>
+          </div>
+        )
       )}
 
       {/* My Gigs */}

@@ -29,6 +29,9 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // NEW SECURITY FIELDS
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockoutUntil: { type: Date, default: null },
   },
   { timestamps: true }
 );

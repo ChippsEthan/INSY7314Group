@@ -108,6 +108,17 @@ app.use('/api/gigs', gigRoutes);
 app.use('/api/bookings', bookingLimiter, bookingRoutes);
 app.use('/api/users', userRoutes);
 
+// TEMPORARY ROUTE FOR SCREENSHOT
+app.get('/api/audit-logs', async (req, res) => {
+  try {
+    const logs = await require('./models/AuditLog').find().sort({ timestamp: -1 });
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // Error handling
 app.use(notFound);
 app.use(errorHandler);

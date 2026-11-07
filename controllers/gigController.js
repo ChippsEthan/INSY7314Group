@@ -1,5 +1,6 @@
 // controllers/gigController.js
 const Gig = require('../models/Gig');
+const { logEvent } = require('../utils/auditLogger'); // ADDED
 
 // POST /api/gigs - Create a gig (freelancer only)
 exports.createGig = async (req, res, next) => {
@@ -13,6 +14,9 @@ exports.createGig = async (req, res, next) => {
       category,
       freelancer: req.user.id,
     });
+
+    // NEW: Audit Log
+    await logEvent('GIG_CREATED', req.user.id, req, { gigId: gig._id, title: gig.title });
 
     res.status(201).json({
       status: 201,
@@ -74,7 +78,6 @@ exports.updateGig = async (req, res, next) => {
       });
     }
 
-    // Ownership check
     if (gig.freelancer.toString() !== req.user.id) {
       return res.status(403).json({
         status: 403,
@@ -87,6 +90,9 @@ exports.updateGig = async (req, res, next) => {
       req.body,
       { new: true, runValidators: true }
     );
+
+    // NEW: Audit Log
+    await logEvent('GIG_UPDATED', req.user.id, req, { gigId: gig._id, title: updatedGig.title });
 
     res.status(200).json({
       status: 200,
@@ -110,7 +116,6 @@ exports.deleteGig = async (req, res, next) => {
       });
     }
 
-    // Ownership check
     if (gig.freelancer.toString() !== req.user.id) {
       return res.status(403).json({
         status: 403,
@@ -119,6 +124,9 @@ exports.deleteGig = async (req, res, next) => {
     }
 
     await Gig.findByIdAndDelete(req.params.id);
+
+    // NEW: Audit Log
+    await logEvent('GIG_DELETED', req.user.id, req, { gigId: gig._id, title: gig.title });
 
     res.status(200).json({
       status: 200,

@@ -4,6 +4,7 @@ const Transaction = require('../models/Transaction');
 const Gig = require('../models/Gig');
 const User = require('../models/User');
 const { logger } = require('../config/logger');
+const { logEvent } = require('../utils/auditLogger'); // ADDED
 
 // POST /api/bookings - Client books a gig
 exports.createBooking = async (req, res, next) => {
@@ -21,7 +22,6 @@ exports.createBooking = async (req, res, next) => {
       });
     }
 
-    // Can't book your own gig
     if (gig.freelancer.toString() === req.user.id) {
       logger.warn('Booking rejected: own gig', {
         event: 'booking.rejected', reason: 'own_gig', clientId: req.user.id, gigId: gig._id.toString(), requestId: req.id,
@@ -32,7 +32,6 @@ exports.createBooking = async (req, res, next) => {
       });
     }
 
-    // Create booking
     const booking = await Booking.create({
       gig: gig._id,
       client: req.user.id,
@@ -40,7 +39,6 @@ exports.createBooking = async (req, res, next) => {
       price: gig.price,
     });
 
-    // Create transaction record
     const transaction = await Transaction.create({
       booking: booking._id,
       client: req.user.id,
@@ -50,9 +48,15 @@ exports.createBooking = async (req, res, next) => {
       status: 'completed',
     });
 
-    // Update freelancer income
     await User.findByIdAndUpdate(gig.freelancer, {
       $inc: { income: gig.price },
+    });
+
+    // NEW: Audit Log
+    await logEvent('BOOKING_CREATED', req.user.id, req, { 
+      bookingId: booking._id, 
+      gigId: gig._id, 
+      amount: gig.price 
     });
 
     logger.info('Booking created', {
@@ -91,7 +95,6 @@ exports.getMyBookings = async (req, res, next) => {
         .populate('client', 'username email')
         .sort({ createdAt: -1 });
     } else {
-      // Admin sees all
       bookings = await Booking.find()
         .populate('gig', 'title price')
         .populate('client', 'username email')

@@ -1,4 +1,5 @@
 const { nodeEnv } = require('../config/env');
+const { logger } = require('../config/logger');
 
 
 //404 handler – call before the global error handler.
@@ -16,7 +17,16 @@ const notFound = (req, res, next) => {
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
   // Log internally (safe – server-side only)
-  console.error(`[ERROR] ${new Date().toISOString()} – ${err.message}`);
+  logger.error('Unhandled error', {
+    event: 'error',
+    errorMessage: err.message,
+    stack: err.stack, // kept in the server-side log only, never sent to the client in production
+    status: err.status || err.statusCode || 500,
+    method: req.method,
+    path: req.originalUrl.split('?')[0],
+    userId: req.user?.id,
+    requestId: req.id,
+  });
 
   const status = err.status || err.statusCode || 500;
 

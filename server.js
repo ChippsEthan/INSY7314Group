@@ -17,6 +17,8 @@ const userRoutes = require('./routes/userRoutes');
 
 const { notFound, errorHandler } = require('./middlewares/errorHandler');
 const xssSanitize = require('./middlewares/xssSanitize');
+const requestLogger = require('./middlewares/requestLogger');
+const { logger, flushLogs } = require('./config/logger');
 
 const app = express();
 
@@ -39,6 +41,9 @@ app.use(
   })
 );
 
+// Request logging (method, path, status, duration - never bodies or tokens)
+app.use(requestLogger);
+
 // Request body parsing
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: false, limit: '10kb' }));
@@ -47,11 +52,19 @@ app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 app.use(mongoSanitize());
 app.use(xssSanitize);
 
-// Rate limiting
+// Rate limiting - every blocked request is logged as a security event
+const rateLimitHandler = (limiter) => (req, res, next, options) => {
+  logger.warn('Rate limit exceeded', {
+    event: 'security.rate_limit', limiter, ip: req.ip, path: req.originalUrl.split('?')[0], requestId: req.id,
+  });
+  res.status(options.statusCode).json(options.message);
+};
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   skipSuccessfulRequests: true,
+  handler: rateLimitHandler('login'),
   message: { status: 429, message: 'Too many attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -60,6 +73,7 @@ const loginLimiter = rateLimit({
 const registerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
+  handler: rateLimitHandler('register'),
   message: { status: 429, message: 'Too many attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -68,6 +82,7 @@ const registerLimiter = rateLimit({
 const bookingLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
+  handler: rateLimitHandler('booking'),
   message: {
     status: 429,
     message: 'Too many bookings. Please try again later.',
@@ -97,38 +112,61 @@ app.use('/api/users', userRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-// HTTPS certificate checks
-const certPath = path.join(__dirname, 'cert.pem');
-const keyPath = path.join(__dirname, 'key.pem');
-
-if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
-  console.error('[SERVER] FATAL: key.pem or cert.pem not found in project root.');
-  console.error(
-    '[SERVER] Generate them with: openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes'
-  );
-  process.exit(1);
-}
-
-const sslOptions = {
-  key: fs.readFileSync(keyPath),
-  cert: fs.readFileSync(certPath),
+// Log fatal problems, send buffered logs to the cloud platform, then exit
+const fatal = (message, meta = {}) => {
+  logger.error(message, { event: 'server.fatal', ...meta });
+  flushLogs().finally(() => process.exit(1));
 };
+
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled promise rejection', {
+    event: 'process.unhandled_rejection',
+    message: reason?.message || String(reason),
+    stack: reason?.stack,
+  });
+});
+
+process.on('uncaughtException', (err) => {
+  fatal(`Uncaught exception: ${err.message}`, { stack: err.stack });
+});
+
+['SIGINT', 'SIGTERM'].forEach((signal) => {
+  process.on(signal, () => {
+    logger.info('Server shutting down', { event: 'server.shutdown', signal });
+    flushLogs().finally(() => process.exit(0));
+  });
+});
 
 // Connect to MongoDB before starting HTTPS
 async function startServer() {
   try {
+    // HTTPS certificate checks
+    const certPath = path.join(__dirname, 'cert.pem');
+    const keyPath = path.join(__dirname, 'key.pem');
+
+    if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+      throw new Error(
+        'key.pem or cert.pem not found in project root. Generate them with: openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes'
+      );
+    }
+
+    const sslOptions = {
+      key: fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath),
+    };
+
     await mongoose.connect(config.mongoUri);
-    console.log('[DB] MongoDB connected successfully.');
+    logger.info('MongoDB connected successfully', { event: 'db.connected' });
 
     https.createServer(sslOptions, app).listen(config.port, () => {
-      console.log(
-        `[SERVER] HustleHub+ API running on https://localhost:${config.port}`
-      );
-      console.log(`[SERVER] Environment: ${config.nodeEnv}`);
+      logger.info(`HustleHub+ API running on https://localhost:${config.port}`, {
+        event: 'server.started',
+        port: config.port,
+        environment: config.nodeEnv,
+      });
     });
   } catch (error) {
-    console.error('[SERVER] Failed to start:', error.message);
-    process.exit(1);
+    fatal(`Failed to start: ${error.message}`);
   }
 }
 

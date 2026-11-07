@@ -1,4 +1,3 @@
-const { nodeEnv } = require('../config/env');
 const { logger } = require('../config/logger');
 
 
@@ -16,31 +15,28 @@ const notFound = (req, res, next) => {
 
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
-  // Log internally (safe – server-side only)
-  logger.error('Unhandled error', {
+  // An invalid ObjectId (e.g. /api/gigs/not-a-valid-id) is the client's mistake, not a server fault
+  const isBadId = err.name === 'CastError';
+  const status = isBadId ? 400 : err.status || err.statusCode || 500;
+
+  // Full details (including the stack) stay in the server-side log only
+  logger.log(status >= 500 ? 'error' : 'warn', 'Request failed', {
     event: 'error',
     errorMessage: err.message,
-    stack: err.stack, // kept in the server-side log only, never sent to the client in production
-    status: err.status || err.statusCode || 500,
+    stack: err.stack,
+    status,
     method: req.method,
     path: req.originalUrl.split('?')[0],
     userId: req.user?.id,
     requestId: req.id,
   });
 
-  const status = err.status || err.statusCode || 500;
+  // The client only ever receives a safe, generic message - never a stack trace or internals
+  let message = err.message;
+  if (status === 500) message = 'An unexpected error occurred. Please try again later.';
+  if (isBadId) message = 'Invalid ID format.';
 
-  const response = {
-    status,
-    message: status === 500 ? 'An unexpected error occurred. Please try again later.' : err.message,
-  };
-
-  // include the stack for easier debugging
-  if (nodeEnv === 'development' && err.stack) {
-    response.stack = err.stack;
-  }
-
-  res.status(status).json(response);
+  res.status(status).json({ status, message });
 };
 
 module.exports = { notFound, errorHandler };

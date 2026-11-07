@@ -29,12 +29,13 @@ export default function GigDetailPage() {
   }, [id]);
 
   const handleBook = async () => {
+    setBookingError('');
     setBooking(true);
     try {
       await api.post('/api/bookings', { gigId: id });
       navigate('/booking-confirmation', { state: { gig } });
     } catch (err) {
-      setError(err.message);
+      setBookingError(err.message);
       setBooking(false);
     }
   };
@@ -57,7 +58,7 @@ export default function GigDetailPage() {
           <span style={styles.price}>R{gig.price?.toFixed(2)}</span>
         </div>
 
-        {error && <p style={styles.error}>{error}</p>}
+        {bookingError && <p style={styles.error}>{bookingError}</p>}
 
         {/* Only clients see the Book Now button */}
         {user?.role === 'client' && (

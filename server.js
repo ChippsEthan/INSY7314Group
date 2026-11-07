@@ -121,7 +121,7 @@ const fatal = (message, meta = {}) => {
 process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled promise rejection', {
     event: 'process.unhandled_rejection',
-    message: reason?.message || String(reason),
+    errorMessage: reason?.message || String(reason),
     stack: reason?.stack,
   });
 });

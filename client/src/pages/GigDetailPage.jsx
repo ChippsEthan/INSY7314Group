@@ -11,6 +11,7 @@ export default function GigDetailPage() {
   const [gig, setGig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [bookingError, setBookingError] = useState('');
   const [booking, setBooking] = useState(false);
 
   useEffect(() => {

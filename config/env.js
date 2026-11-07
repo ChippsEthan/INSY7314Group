@@ -6,6 +6,9 @@ const config = {
   saltRounds: parseInt(process.env.SALT_ROUNDS, 10) || 10,
   nodeEnv: process.env.NODE_ENV || 'development',
   mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/hustlehub',
+  logLevel: process.env.LOG_LEVEL || 'info',
+  betterStackToken: process.env.BETTERSTACK_SOURCE_TOKEN,
+  betterStackHost: process.env.BETTERSTACK_INGESTING_HOST,
 };
 
 // Fail if env vars missing

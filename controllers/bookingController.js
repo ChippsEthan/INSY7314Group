@@ -3,6 +3,7 @@ const Booking = require('../models/Booking');
 const Transaction = require('../models/Transaction');
 const Gig = require('../models/Gig');
 const User = require('../models/User');
+const { logger } = require('../config/logger');
 
 // POST /api/bookings - Client books a gig
 exports.createBooking = async (req, res, next) => {
@@ -11,6 +12,9 @@ exports.createBooking = async (req, res, next) => {
 
     const gig = await Gig.findById(gigId);
     if (!gig) {
+      logger.warn('Booking rejected: gig not found', {
+        event: 'booking.rejected', reason: 'gig_not_found', clientId: req.user.id, requestId: req.id,
+      });
       return res.status(404).json({
         status: 404,
         message: 'Gig not found.',
@@ -19,6 +23,9 @@ exports.createBooking = async (req, res, next) => {
 
     // Can't book your own gig
     if (gig.freelancer.toString() === req.user.id) {
+      logger.warn('Booking rejected: own gig', {
+        event: 'booking.rejected', reason: 'own_gig', clientId: req.user.id, gigId: gig._id.toString(), requestId: req.id,
+      });
       return res.status(400).json({
         status: 400,
         message: 'You cannot book your own gig.',
@@ -46,6 +53,15 @@ exports.createBooking = async (req, res, next) => {
     // Update freelancer income
     await User.findByIdAndUpdate(gig.freelancer, {
       $inc: { income: gig.price },
+    });
+
+    logger.info('Booking created', {
+      event: 'booking.created', bookingId: booking._id.toString(), gigId: gig._id.toString(),
+      clientId: req.user.id, freelancerId: gig.freelancer.toString(), amount: gig.price, requestId: req.id,
+    });
+    logger.info('Transaction recorded', {
+      event: 'transaction.created', transactionId: transaction._id.toString(), bookingId: booking._id.toString(),
+      amount: transaction.amount, type: transaction.type, status: transaction.status, requestId: req.id,
     });
 
     res.status(201).json({

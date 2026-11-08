@@ -1,6 +1,6 @@
 # HustleHub+ Freelance Marketplace
 
-INSY7314 – POE Part 2. A secure MERN-stack marketplace where Clients book services from Freelancers. Part 1 built the secure authentication backend. Part 2 adds MongoDB, gigs, bookings, transactions, income tracking, more security middleware, a React frontend and automated tests.
+INSY7314 – POE Part 3. A secure MERN-stack marketplace where Clients book services from Freelancers. Part 1 built the secure authentication backend. Part 2 added MongoDB, gigs, bookings, transactions, income tracking, more security middleware, a React frontend and automated tests. Part 3 adds a South African income-tax estimate and income dashboard, structured logging to a cloud platform, Docker, account lockout and an audit trail, a GitHub Actions CI/CD pipeline and static code analysis.
 
 ## Table of Contents
 
@@ -15,9 +15,13 @@ INSY7314 – POE Part 2. A secure MERN-stack marketplace where Clients book serv
 9. [Testing](#9-testing)
 10. [CI/CD Pipeline](#10-cicd-pipeline)
 11. [Static Code Analysis](#11-static-code-analysis)
-12. [Demonstration Video](#12-demonstration-video)
-13. [Appendix A: Part 1 Feedback Checklist](#appendix-a-part-1-feedback-checklist)
-14. [Appendix B: Part 1 Evidence Screenshots](#appendix-b-part-1-evidence-screenshots)
+12. [Tax Estimate and Income Dashboard](#12-tax-estimate-and-income-dashboard)
+13. [Logging and Monitoring](#13-logging-and-monitoring)
+14. [Docker](#14-docker)
+15. [Additional Security Features](#15-additional-security-features)
+16. [Demonstration Video](#16-demonstration-video)
+17. [Appendix A: Part 1 Feedback Checklist](#appendix-a-part-1-feedback-checklist)
+18. [Appendix B: Part 1 Evidence Screenshots](#appendix-b-part-1-evidence-screenshots)
 
 ---
 
@@ -35,9 +39,14 @@ Our solution. HustleHub+ is a marketplace that treats security as a core require
 | Marketplace | Gig CRUD, bookings, transactions, freelancer income | 2 |
 | Hardening | Rate limiting, NoSQL and XSS sanitising, Helmet and CSP, HTTPS, CORS allow-list, safe errors | 1 and 2 |
 | Frontend | React app: register, login, browse, book, dashboard | 2 |
-| Testing | Postman and Newman (API), React Testing Library with Vitest (UI) | 2 |
+| Testing | Postman and Newman (API), React Testing Library with Vitest (UI), Node test runner (backend unit tests) | 2 and 3 |
+| Tax and dashboard | Estimated South African income tax and a dashboard with summary cards and charts | 3 |
+| Logging | Winston logs with secrets redacted, shipped to Better Stack | 3 |
+| Containers | Docker images and a Compose stack for the API, frontend and database | 3 |
+| Account protection | Per-account lockout and an audit trail of sensitive actions | 3 |
+| Pipeline | GitHub Actions: build, test, security scans and Docker build; CodeQL static analysis | 3 |
 
-Stack: MongoDB and Mongoose, Node.js with Express 4 over HTTPS, React 18 (Vite), plus bcrypt, jsonwebtoken, helmet, cors, express-rate-limit, express-mongo-sanitize and express-validator.
+Stack: MongoDB and Mongoose, Node.js with Express 4 over HTTPS, React 18 (Vite), plus bcrypt, jsonwebtoken, helmet, cors, express-rate-limit, express-mongo-sanitize, express-validator, Winston, Recharts, Docker and GitHub Actions.
 
 ---
 
@@ -52,6 +61,7 @@ Stack: MongoDB and Mongoose, Node.js with Express 4 over HTTPS, React 18 (Vite),
 | Book a gig | 401 | Yes | 403 | 403 |
 | View own bookings | 401 | Yes | Yes (on own gigs) | Yes (all) |
 | View income | 401 | 403 | Yes | 403 |
+| View tax estimate | 401 | 403 | Yes | 403 |
 
 - **Client:** hires freelancers. This is the default role at registration.
 - **Freelancer:** sells gigs, sees bookings made on them and tracks income.
@@ -70,8 +80,9 @@ This shows the components and where each sits in the MERN stack. The flow diagra
 |---|---|---|
 | React  | client/src pages, components, AuthContext, PrivateRoute, axiosInstance.js | UI, route protection, session state, safe rendering |
 | Express | server.js, routes/, middlewares/ | HTTPS server, middleware pipeline, JWT and role checks, validation |
-| Node.js | controllers/, config/env.js | Business logic (booking, income, ownership), configuration |
-| MongoDB | models/, Atlas database | Persistent storage |
+| Node.js | controllers/, services/, utils/, config/env.js, config/logger.js | Business logic (booking, income, tax, ownership), audit trail, configuration, logging |
+| MongoDB | models/, Atlas database or the Compose `mongo` container | Persistent storage |
+| Docker | docker-compose.yml, Dockerfile, client/dockerfile | Runs the database, API and frontend together (section 14) |
 
 ---
 
@@ -129,7 +140,7 @@ We chose JWT because the SPA and API run on different origins and the API is sta
 | Input validation | express-validator on the server | Client-only checks; Joi or Zod; manual if checks | The browser can be bypassed, so the server must validate. It plugs into Express middleware and includes sanitisers |
 | NoSQL injection | **express-mongo-sanitize** plus Mongoose type casting | Trusting Mongoose alone | Stops operator payloads such as `{"$gt": ""}` reaching queries |
 | XSS | Server tag stripping, React escaping, DOMPurify, CSP | One layer only | Overlapping layers. Output encoding is the primary defence |
-| Brute force and abuse | express-rate-limit: login 5 failed per 15 min, register 5 per 15 min, bookings 10 per hour, all other API routes 300 per 15 min | Account lockout; CAPTCHA; WAF | Lockout lets attackers lock out victims on purpose. CAPTCHA needs a third party. A WAF suits production |
+| Brute force and abuse | express-rate-limit: login 5 failed per 15 min, register 5 per 15 min, bookings 10 per hour, all other API routes 300 per 15 min | CAPTCHA; WAF | CAPTCHA needs a third party. A WAF suits production. Per-account lockout is added as well (see the next rows) |
 | Headers | Helmet (CSP, HSTS, nosniff, frame protection, hides X-Powered-By) | Hand-set headers | Easy to get wrong manually |
 | Access control | RBAC (requireRole) plus ownership checks in controllers | Hiding buttons in React; full ABAC | UI hiding is cosmetic. Ownership checks stop one freelancer editing another's gig |
 | Transport | HTTPS (self-signed in development) | Plain HTTP | Protects passwords and tokens in transit. Production would use a CA certificate |
@@ -137,6 +148,11 @@ We chose JWT because the SPA and API run on different origins and the API is sta
 | Secrets | .env, git-ignored. *.pem also ignored. Fails fast if JWT_SECRET is missing | Hard-coded secrets | Secrets never reach the repository |
 | Payments | Simulated transactions only | Real card processing | No card data held, so no PCI-DSS exposure |
 | Token storage | localStorage with Axios interceptor | httpOnly cookie | Simple with a separate API origin. XSS could read it, which we offset with DOMPurify, React escaping, tag stripping and CSP. Cookies would need CSRF protection |
+| Account lockout | Lock the account for 15 minutes after 5 failed passwords, stored in MongoDB (`failedLoginAttempts`, `lockoutUntil`) | IP rate limiting alone | An IP limiter can be bypassed by rotating IP addresses, and its counters reset on restart. The lock follows the account and survives restarts. **Trade-off:** an attacker can lock a victim out on purpose, so the lock is short and every lock is logged |
+| Audit trail | `AuditLog` collection in MongoDB: who, what, when and from which IP | Application log files only | Security-relevant actions are kept as queryable records, separate from the operational logs, so they can be reviewed after an incident |
+| Logging | Winston with redaction, local files and Better Stack | console.log; no logging | Structured, levelled, timestamped logs are needed to detect attacks. Redaction keeps passwords, tokens and database credentials out of every log |
+| Containers | Multi-stage Docker builds, Alpine base images, non-root user, patched packages, secrets from a git-ignored env file | Running on the host; baking secrets into images | Small images with a limited user reduce the impact of a compromise, and no secret is ever stored in an image layer |
+| Tax estimate | Bracket table in `services/taxService.js` (SARS 2026/27) with the primary rebate | A flat rate; a third-party tax API | The brackets are public and change once a year, so a local table is accurate, testable and has no external dependency |
 
 ---
 
@@ -167,6 +183,12 @@ Key:
 | Misconfiguration (A05) | Missing headers, verbose errors | Helmet, CORS allow-list, generic errors | Newman setup folder |
 | Denial of service | Huge bodies, floods | 10 KB limit (413), rate limits | Newman folder 4 |
 | Vulnerable components (A06) | Outdated packages | Locked versions. `npm audit`, Gitleaks and a Grype image scan run in the CI pipeline on every push | CI pipeline (section 10) |
+| Account takeover by guessing (A07) | Many password guesses against one account, spread across IP addresses | Per-account lockout (5 failures, 15 minutes), IP rate limiter, identical 401 for unknown email and wrong password | Account lockout screenshots (section 15.1), Newman folder 5 |
+| Insufficient logging and monitoring (A09) | Attacks go unnoticed and there is no record of who did what | Winston logs shipped to Better Stack, audit trail in MongoDB | Sections 13 and 15.2 |
+| Sensitive data in logs (A02, A09) | Passwords, tokens or database credentials end up in log files or the cloud platform | Redaction layer, masked emails, no request bodies or query strings logged | Backend unit tests (section 9.3), Better Stack screenshots |
+| Secrets exposure (A02, A05) | Keys or tokens committed to git or baked into images | `.env` and `*.pem` git-ignored, Docker `env_file` and mounted certificates, `.dockerignore` files, Gitleaks scan in CI | Sections 10.4 and 14 |
+| Vulnerable container images (A06) | Known flaws in the base image | Node 22 Alpine base, `apk upgrade`, npm removed from the runtime image, non-root user, Grype scan in CI | Section 10.6 |
+| Insecure code patterns (A03, A04) | Injection, ReDoS, prototype pollution and missing rate limits in our own code | CodeQL analysis with every finding fixed | Section 11 |
 
 Known limitations and next steps
 
@@ -178,6 +200,12 @@ Known limitations and next steps
 - Stack traces are returned when NODE_ENV=development. Always run production with NODE_ENV=production.
 - The booking and income update are separate writes. A MongoDB transaction would make them atomic.
 - The dashboard Edit button points to a route that does not exist yet. The PUT /api/gigs/:id endpoint is ready for it.
+- Account lockout can be used to lock a victim out for 15 minutes, and the "temporarily locked" reply confirms that the account exists.
+- Docker Compose publishes MongoDB on port 27017 without authentication and uses the unpinned `mongo:latest` image. This is acceptable for local development only. A real deployment would use database authentication, a private network and a pinned version.
+- The frontend container serves plain HTTP (nginx). A real deployment would put TLS in front of it.
+- The CORS allow-list used when `NODE_ENV=production` contains a placeholder domain, which must be replaced before deployment. The Docker demonstration runs with `NODE_ENV=development` for this reason.
+- The audit trail has no read endpoint. Entries are read from MongoDB directly. A temporary route used for screenshots was removed because it was unauthenticated.
+- Early commits contained a development `.env` and a self-signed private key. Both are now git-ignored but remain in the git history. They were used for local development only, and a real deployment would use new secrets and certificates.
 
 ---
 
@@ -188,6 +216,7 @@ Known limitations and next steps
 - **Transactions:** every booking creates a transaction linking client, freelancer and booking.
 - **Income:** the freelancer's income rises by the gig price on each booking. GET /api/users/me/income returns the total and the transaction list.
 - **Security additions:** NoSQL and XSS sanitising, rate limiting (login, register, bookings, plus a general limiter on all other routes), Helmet and CSP, RBAC with ownership checks.
+- **Part 3 additions:** a tax estimate and income dashboard ([section 12](#12-tax-estimate-and-income-dashboard)), structured logging to Better Stack ([section 13](#13-logging-and-monitoring)), Docker ([section 14](#14-docker)), account lockout and an audit trail ([section 15](#15-additional-security-features)), and the CI/CD pipeline and static analysis ([section 10](#10-cicd-pipeline) and [section 11](#11-static-code-analysis)).
 
 Base URL https://localhost:5000/api. Protected routes need `Authorization: Bearer <token>`. Errors look like { "status": 403, "message": "..." }, and validation errors add "errors": [{ "field", "message" }].
 
@@ -204,20 +233,21 @@ Base URL https://localhost:5000/api. Protected routes need `Authorization: Beare
 | POST /bookings | Client | gigId. Creates booking and transaction, raises income. 201, 403, 404, 429 |
 | GET /bookings/me | Logged in | Client: own. Freelancer: on own gigs. Admin: all |
 | GET /users/me/income | Freelancer | { totalIncome, transactionCount, transactions }. 403 for clients |
+| GET /users/me/tax | Freelancer | { taxYear, grossIncome, estimatedTax, netIncome, effectiveRate, breakdown, ... }. 401, 403 for clients (section 12) |
 | GET /health | Public | API status |
 
 ---
 
 ## 8. Setup: Running the Application
 
-**Prerequisites:** Node.js 18 or newer, Git, OpenSSL, and a MongoDB database (MongoDB Atlas or a local MongoDB Community Server). Install Newman for the API tests with npm install -g newman.
+**Prerequisites:** Node.js 18 or newer, Git, OpenSSL, and a MongoDB database (MongoDB Atlas or a local MongoDB Community Server). Install Newman for the API tests with npm install -g newman. Docker Desktop is only needed for the containerised run in [section 14](#14-docker).
 
 **Main dependencies** (all installed by npm install)
 
 | Part | Packages |
 |---|---|
-| Backend | express, mongoose, bcrypt, jsonwebtoken, express-validator, helmet, cors, express-rate-limit, express-mongo-sanitize, dotenv (nodemon for development) |
-| Frontend | react, react-dom, react-router-dom, react-hook-form, axios, dompurify, vite |
+| Backend | express, mongoose, bcrypt, jsonwebtoken, express-validator, helmet, cors, express-rate-limit, express-mongo-sanitize, winston, @logtail/node, @logtail/winston, dotenv (nodemon for development) |
+| Frontend | react, react-dom, react-router-dom, react-hook-form, axios, dompurify, recharts, vite |
 | Testing | vitest, jsdom, @testing-library/react, @testing-library/jest-dom, @testing-library/user-event |
 
 ### Backend (Terminal 1, project root)
@@ -238,9 +268,12 @@ Base URL https://localhost:5000/api. Protected routes need `Authorization: Beare
    JWT_SECRET=a_long_random_string_of_at_least_32_characters
    SALT_ROUNDS=10
    MONGO_URI=mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/hustlehub?appName=Cluster0
+   LOG_LEVEL=info
+   BETTERSTACK_SOURCE_TOKEN=
+   BETTERSTACK_INGESTING_HOST=
    ```
 
-   For a local database use `mongodb://localhost:27017/hustlehub`.
+   For a local database use `mongodb://localhost:27017/hustlehub`. The last three lines are optional logging settings ([section 13](#13-logging-and-monitoring)). Leave the Better Stack values empty to log to the console and the `logs/` folder only.
 
 3. Generate the HTTPS certificate (press Enter through the prompts):
 
@@ -347,11 +380,25 @@ npm test
 | File | Covers |
 |---|---|
 | src/pages/components.test.jsx (10 tests) | LoginPage renders fields and shows "required" errors when empty. GigCard shows title, price and category. Navbar shows Login and Register when logged out, and username, Logout and freelancer links when logged in. **BookingConfirmationPage** shows the confirmation message, gig title and price |
+| src/components/taxSummary.test.jsx (6 tests) | The income and tax cards render. One bar is drawn per month. An empty message appears and no charts are drawn when there is no income. Nothing renders when data is missing. Payments are summed by month, and refunds and failed payments are ignored |
 | src/components/rbac.test.jsx (5 tests) | PrivateRoute redirects logged-out users to /login, redirects a client away from a freelancer route and renders for the correct role. Navbar hides freelancer links from clients. GigCard removes `<script>` content (XSS) |
 
-Result: 2 files, 15 tests, all passing. The frontend tests also run in the CI pipeline on every push. The yellow React Router "Future Flag Warning" lines are harmless notices.
+Result: 3 files, 21 tests, all passing. The frontend tests also run in the CI pipeline on every push. The yellow React Router "Future Flag Warning" lines are harmless notices.
 
-![Frontend tests passing](docs/evidence/frontend-tests.png)
+![Frontend tests passing](docs/evidence/part-a-tax-and-logging/02-frontend-npm-test.png)
+
+### 9.3 Backend unit tests
+
+The backend unit tests use Node's built-in test runner (`npm test` runs `node --test`) and need no database.
+
+| File | Covers |
+|---|---|
+| test/taxService.test.js (8 tests) | Zero and invalid income give zero tax. Income at the R99,000 threshold is covered by the rebate. The first and second bracket boundaries, a mid-bracket income and the top 45% bracket. Net income plus tax equals gross income. Bracket slices add up to gross income |
+| test/logSanitiser.test.js (6 tests) | Passwords and tokens are redacted in nested objects. The Authorization header is redacted. MongoDB connection string credentials are hidden. Error name, message and stack are kept. Emails are masked. Very deep objects stop at a safe depth |
+
+Result: 14 tests, all passing. These also run in the CI pipeline on every push (section 10).
+
+![Backend tests passing](docs/evidence/part-a-tax-and-logging/01-backend-npm-test.png)
 
 ---
 
@@ -457,9 +504,292 @@ After these fixes CodeQL reports **no open alerts** on `main`. The Newman API te
 
 ---
 
-## 12. Demonstration Video
+## 12. Tax Estimate and Income Dashboard
 
-YouTube link: https://youtu.be/Y0zaNs76LAc
+Freelancers can see how much they have earned and an estimate of the income tax on it, as South African rand amounts for the **2026/27 tax year** (1 March 2026 to 28 February 2027). The figures come from the SARS *Rates of Tax for Individuals*.
+
+### 12.1 Tax logic
+
+The calculation is in `services/taxService.js`. Income is treated as one year of taxable income, and tax is worked out in three steps:
+
+1. Find the bracket the income falls in.
+2. Tax before rebate = the bracket's base amount + the bracket's rate x (income - the bracket's lower limit).
+3. Estimated tax = tax before rebate - the primary rebate of **R17,820** (never below zero).
+
+| Taxable income (R) | Rate | Tax before rebate |
+|---|---|---|
+| 0 to 245,100 | 18% | 18% of income |
+| 245,101 to 383,100 | 26% | 44,118 + 26% above 245,100 |
+| 383,101 to 530,200 | 31% | 79,998 + 31% above 383,100 |
+| 530,201 to 695,800 | 36% | 125,599 + 36% above 530,200 |
+| 695,801 to 887,000 | 39% | 185,215 + 39% above 695,800 |
+| 887,001 to 1,878,600 | 41% | 259,783 + 41% above 887,000 |
+| 1,878,601 and above | 45% | 666,339 + 45% above 1,878,600 |
+
+The primary rebate means a person under 65 pays no tax on the first **R99,000** a year. **Worked example:** an income of R300,000 falls in the 26% bracket. Tax before rebate is 44,118 + 26% x (300,000 - 245,100) = R58,392. Minus the R17,820 rebate, the estimate is **R40,572**, so net income is R259,428 and the effective rate is 13.52%.
+
+**Assumptions:** total income is treated as taxable income for one tax year. There are no deductions, medical credits, provisional tax, UIF or age-based rebates (only the under-65 primary rebate). The result is an estimate and not tax advice, and the API says so in a `disclaimer` field.
+
+### 12.2 API
+
+`GET /api/users/me/tax` is for freelancers only (`verifyToken`, then `requireRole('freelancer')`). It returns **200** with the figures, **401** without a token and **403** for a client.
+
+| Field | Meaning |
+|---|---|
+| `taxYear` | `2026/27` |
+| `grossIncome` | The freelancer's total income |
+| `taxBeforeRebate`, `primaryRebate` | Tax from the brackets, and the rebate that is subtracted |
+| `estimatedTax` | Tax payable after the rebate |
+| `netIncome` | Gross income minus estimated tax |
+| `effectiveRate`, `marginalRate` | Estimated tax as a percentage of income, and the rate of the top bracket reached |
+| `breakdown` | The slice of income and the tax in each bracket used |
+| `disclaimer` | Reminder that this is an estimate |
+
+### 12.3 Dashboard
+
+The Freelancer Dashboard has an **Income and Tax Overview** built with Recharts:
+
+- **Summary cards:** total earned, estimated tax, net income and effective tax rate.
+- **Charts:** a bar chart of income per month, and a pie chart of where the income goes (net income against estimated tax).
+- **How this was calculated:** an expandable table of income and tax per bracket.
+- **Empty and error states:** a freelancer with no bookings sees zeros and the message "No income yet. Charts will appear once you receive bookings". While loading, the page shows "Loading dashboard...", and if the dashboard data cannot be loaded it shows an error message. If only the tax request fails, the rest of the dashboard still loads.
+
+### 12.4 Tests
+
+- **Backend (`test/taxService.test.js`):** zero and invalid income, the R99,000 threshold, the first and second bracket boundaries, a mid-bracket income, the top 45% bracket, net income plus tax equal to gross income, and bracket slices adding up to gross income.
+- **Frontend (`taxSummary.test.jsx`, 6 tests):** the cards render, one bar is drawn per month, the empty message appears without income, nothing renders when data is missing, payments are summed by month, and refunds and failed payments are ignored.
+
+### 12.5 Evidence
+
+Dashboard for a freelancer with income (R152,000 earned: 18% = R27,360, less the R17,820 rebate = R9,540 tax):
+
+![Freelancer dashboard with tax overview](docs/evidence/part-a-tax-and-logging/06-freelancer-dashboard-tax.png)
+
+The expandable calculation table:
+
+![How the tax was calculated](docs/evidence/part-a-tax-and-logging/07-tax-how-calculated.png)
+
+A new freelancer with no income (empty state):
+
+![Empty freelancer dashboard](docs/evidence/part-a-tax-and-logging/08-new-freelancer-empty-dashboard.png)
+
+A client's confirmed booking, which produces the freelancer's income:
+
+![Client My Bookings](docs/evidence/part-a-tax-and-logging/05-client-my-bookings.png)
+
+Postman checks of `GET /api/users/me/tax`: logging in as a freelancer, no token gives 401, and a freelancer token gives 200:
+
+![Postman login](docs/evidence/part-a-tax-and-logging/09-postman-login.png)
+
+![Tax route without a token returns 401](docs/evidence/part-a-tax-and-logging/10-postman-tax-no-token-401.png)
+
+![Tax route as a freelancer returns 200](docs/evidence/part-a-tax-and-logging/11-postman-tax-freelancer-200.png)
+
+---
+
+## 13. Logging and Monitoring
+
+### 13.1 How logging works
+
+The API uses **Winston** (`config/logger.js`) instead of `console.log`. Every entry has a timestamp, a level (`error`, `warn`, `info`) and structured fields, and goes to three places:
+
+| Destination | Detail |
+|---|---|
+| Console | Coloured, readable output while developing |
+| Local files | `logs/app.log` (everything) and `logs/error.log` (errors only), JSON format, rotated at 5 MB with 3 files kept. The `logs/` folder is git-ignored |
+| **Better Stack** (cloud) | Shipped automatically when `BETTERSTACK_SOURCE_TOKEN` and `BETTERSTACK_INGESTING_HOST` are set in `.env`. Leave them empty to log locally only |
+
+The level is set with `LOG_LEVEL` (default `info`), and logging is silent during unit tests.
+
+### 13.2 What is logged
+
+| Event | Level | What is recorded |
+|---|---|---|
+| `http.request` | info, warn for 4xx, error for 5xx | Request ID, method, path (without the query string), status, duration, IP and user ID |
+| `auth.register.success`, `auth.register.duplicate` | info, warn | New registration, or a rejected duplicate email |
+| `auth.login.success`, `auth.login.failed`, `auth.login.locked` | info, warn, warn | Login attempts with the reason (unknown email or wrong password), the user ID, a masked email and the IP |
+| `booking.created`, `transaction.created`, `booking.rejected` | info, info, warn | Bookings and the transactions they create, and rejected bookings (gig not found, or booking your own gig) |
+| `auth.token.missing`, `auth.token.invalid`, `access.denied` | warn | Requests without a token, with an invalid or expired token, or from the wrong role |
+| `security.rate_limit` | warn | Which limiter fired, the IP and the path |
+| `error` | warn or error | Failed requests handled by the global error handler |
+| `db.connected`, `server.started`, `server.shutdown`, `server.fatal`, `process.unhandled_rejection` | info or error | Server and database lifecycle events and crashes |
+
+### 13.3 What is never logged
+
+A redaction layer (`config/logSanitiser.js`) runs on every entry before it reaches any destination:
+
+- Any field named like `password`, `token`, `authorization`, `secret`, `cookie`, `jwt` or `mongoUri` is replaced with `[REDACTED]`.
+- Username and password inside MongoDB connection strings are hidden.
+- Emails are masked (`al***@example.com`), which is enough to spot repeated attempts without storing the full address.
+- Request bodies are never logged, and query strings are dropped from paths.
+
+Six backend unit tests cover the redaction (section 9.3).
+
+### 13.4 Why it matters
+
+- **Detecting attacks:** repeated `auth.login.failed` events for one masked email or IP show password guessing, and `security.rate_limit` and `auth.login.locked` events show an attack being blocked.
+- **Tracing problems:** the request ID is returned in the `X-Request-Id` header and appears on every line for that request, so one request can be followed through the system.
+- **Accountability:** bookings, transactions and access-denied events record who did what and when.
+- **Resilience:** logs in a cloud platform survive the loss of the server or container, and cannot be quietly edited by someone who gains access to it.
+- **Safety:** redaction means the logs themselves cannot become a source of leaked credentials.
+
+### 13.5 Evidence
+
+Each pair shows the same event in the local log file and in Better Stack.
+
+| Local log (`logs/app.log`) | Better Stack |
+|---|---|
+| ![Register, local](docs/evidence/part-a-tax-and-logging/12-register-local-log.png) | ![Register, Better Stack](docs/evidence/part-a-tax-and-logging/13-register-betterstack.png) |
+| ![Duplicate registration, local](docs/evidence/part-a-tax-and-logging/14-register-duplicate-local-log.png) | ![Duplicate registration, Better Stack](docs/evidence/part-a-tax-and-logging/15-register-duplicate-betterstack.png) |
+| ![Failed login, local](docs/evidence/part-a-tax-and-logging/16-login-failed-local-log.png) | ![Failed login, Better Stack](docs/evidence/part-a-tax-and-logging/17-login-failed-betterstack.png) |
+| ![Successful login, local](docs/evidence/part-a-tax-and-logging/18-login-success-local-log.png) | ![Successful login, Better Stack](docs/evidence/part-a-tax-and-logging/19-login-success-betterstack.png) |
+| ![Booking, local](docs/evidence/part-a-tax-and-logging/20-booking-local-log.png) | ![Booking, Better Stack](docs/evidence/part-a-tax-and-logging/21-booking-betterstack.png) |
+| ![Rate limit, local](docs/evidence/part-a-tax-and-logging/22-rate-limit-local-log.png) | ![Rate limit, Better Stack](docs/evidence/part-a-tax-and-logging/23-rate-limit-betterstack.png) |
+
+Server start-up and the health check:
+
+![Server start-up log](docs/evidence/part-a-tax-and-logging/03-node-server-startup.png)
+
+![Health check](docs/evidence/part-a-tax-and-logging/04-api-health-check.png)
+
+---
+
+## 14. Docker
+
+### 14.1 What runs
+
+`docker-compose.yml` starts three containers on one network:
+
+| Service | Built from | Port | Notes |
+|---|---|---|---|
+| `mongo` | `mongo:latest` image | 27017 | Data kept in the `mongo-data` volume |
+| `backend` | `Dockerfile` in the project root | 5000 (HTTPS) | Reads secrets from the git-ignored `.env` file. `cert.pem` and `key.pem` are mounted read-only |
+| `frontend` | `client/dockerfile` | 3000 (nginx on port 80) | Serves the built React app |
+
+### 14.2 How the images are built
+
+- **Multi-stage builds:** dependencies and the build happen in a builder stage, and only the result is copied into the final image.
+- **Backend:** `node:22-alpine`. The final stage patches operating system packages (`apk upgrade`), removes npm because the running API does not need it, and runs as a non-root user (`appuser`). `logs/` is the only extra folder that user can write to.
+- **Frontend:** the React app is built with Node, then served by `nginx:alpine` with patched packages.
+- **No secrets in images:** `.dockerignore` files keep `node_modules`, `.env`, `.git`, `cert.pem`, `key.pem` and logs out of the build. Secrets are passed at run time through `env_file`, and HTTPS certificates are mounted as volumes.
+- **Pipeline:** the CI pipeline builds both images, starts this Compose stack and scans the images for vulnerabilities on every push (section 10).
+
+### 14.3 Running the stack
+
+1. Clone the repository and open it in a terminal.
+2. Create the `.env` file from the template (`cp .env.example .env`, or `copy .env.example .env` in PowerShell). For the database container, set:
+
+   ```env
+   MONGO_URI=mongodb://mongo:27017/hustlehub
+   ```
+
+   Keep `NODE_ENV=development` for this local demonstration, because the production CORS allow-list is a placeholder (see the known limitations in section 6). Set `JWT_SECRET` to a long random string.
+
+3. Generate the HTTPS certificate in the project root (press Enter through the prompts):
+
+   ```bash
+   openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
+   ```
+
+4. Build and start everything:
+
+   ```bash
+   docker compose up --build
+   ```
+
+5. Open the app at <http://localhost:3000>. Check the API at <https://localhost:5000/api/health> and accept the self-signed certificate once.
+6. Stop the stack with `docker compose down`. Add `-v` to also delete the database volume.
+
+### 14.4 Evidence
+
+Three containers running in Docker Desktop:
+
+![Docker Desktop with three containers running](docs/evidence/part-c-docker-and-security/01-docker-desktop-three-containers-running.png)
+
+Building and starting the stack:
+
+![docker compose up --build](docs/evidence/part-c-docker-and-security/02-docker-compose-up-build-vscode.png)
+
+![Containers created](docs/evidence/part-c-docker-and-security/03-docker-compose-up-containers-created.png)
+
+![MongoDB container logs](docs/evidence/part-c-docker-and-security/04-docker-compose-mongo-logs.png)
+
+---
+
+## 15. Additional Security Features
+
+Two features were added beyond the minimum requirements: **account lockout** and an **audit trail**.
+
+### 15.1 Account lockout
+
+**What it does:** after **5 failed password attempts** on an existing account, the account is locked for **15 minutes**. While it is locked, login returns `429 Account is temporarily locked. Try again in N minutes.`, even if the correct password is used. A successful login resets the counter. The counter and the lock time are stored on the user in MongoDB (`failedLoginAttempts`, `lockoutUntil`), and every lock is logged as `auth.login.locked`.
+
+**Threat addressed:** password guessing and credential stuffing (OWASP A07). The IP rate limiter alone can be bypassed by rotating IP addresses, and its counters are in memory so they reset on restart. The lock belongs to the account, so it holds however many addresses the attacker uses, and it survives a restart.
+
+**How to see it working:**
+
+1. Register a test user, then send `POST /api/auth/login` with a wrong password several times. Each wrong attempt returns `401 Invalid email or password`.
+2. From one IP address, the IP rate limiter usually answers first with `429 Too many attempts`. To see the account lock itself, restart the API (the limiter counters reset but the lock remains in MongoDB), or log in from a different IP, and try again. The response is `429 Account is temporarily locked`.
+
+**Trade-off:** an attacker could lock a victim's account on purpose. The lock is short (15 minutes), each one is logged, and the "locked" reply also confirms the account exists. These are listed in the known limitations in section 6.
+
+Evidence: the lockout fields on the user model, the three places in the login code, and the Postman requests.
+
+![User model with lockout fields](docs/evidence/part-c-docker-and-security/08-user-model-lockout-fields-wide.png)
+
+![Login: lockout check](docs/evidence/part-c-docker-and-security/11-login-account-lockout-check.png)
+
+![Login: increment failed attempts and lock](docs/evidence/part-c-docker-and-security/10-login-increment-failed-attempts-and-lock.png)
+
+![Login: reset attempts on success](docs/evidence/part-c-docker-and-security/09-login-reset-failed-attempts-on-success.png)
+
+![Postman: register the test user](docs/evidence/part-c-docker-and-security/16-postman-register-lockout-test-user.png)
+
+![Postman: wrong password returns 401](docs/evidence/part-c-docker-and-security/17-postman-login-wrong-password-401.png)
+
+![Postman: repeated attempts return 429](docs/evidence/part-c-docker-and-security/18-postman-login-rate-limit-429.png)
+
+### 15.2 Audit trail
+
+**What it does:** security-relevant actions are saved as records in an `AuditLog` collection in MongoDB. Each record has the action, the user ID, the IP address, details and a timestamp. The helper is `utils/auditLogger.js`, and a failed audit write never breaks the request.
+
+| Action | Recorded when |
+|---|---|
+| `USER_LOGIN_SUCCESS`, `USER_LOGIN_FAILED` | A login succeeds, or fails (with a masked email and the attempt count) |
+| `GIG_CREATED`, `GIG_UPDATED`, `GIG_DELETED` | A freelancer creates, edits or deletes a gig |
+| `BOOKING_CREATED` | A client books a gig (booking ID, gig ID and amount) |
+
+**Threat addressed:** lack of accountability and monitoring (OWASP A09). If something goes wrong, the audit trail shows who did what, when and from where. It is kept separate from the operational logs in section 13, so it can be queried and reviewed on its own.
+
+**How to see it working:** perform an action (log in, create a gig, book a gig), then look in the `auditlogs` collection, for example with `db.auditlogs.find().sort({ timestamp: -1 })` in `mongosh` or in MongoDB Compass or Atlas. For the screenshots below, a temporary read-only route was used to display the entries. **It was removed afterwards, because it returned the audit log to anyone without logging in.** That route was spotted during the security review (see section 11).
+
+Evidence:
+
+![AuditLog model](docs/evidence/part-c-docker-and-security/05-audit-log-model.png)
+
+![Audit logger helper](docs/evidence/part-c-docker-and-security/06-audit-logger-util.png)
+
+![Audit entry: gig created](docs/evidence/part-c-docker-and-security/14-audit-log-gig-created.png)
+
+![Audit entry: gig updated](docs/evidence/part-c-docker-and-security/13-audit-log-gig-updated.png)
+
+![Audit entry: gig deleted](docs/evidence/part-c-docker-and-security/12-audit-log-gig-deleted.png)
+
+![Audit entry: booking created](docs/evidence/part-c-docker-and-security/15-audit-log-booking-created.png)
+
+![Temporary route used to display the entries (since removed)](docs/evidence/part-c-docker-and-security/19-temporary-audit-logs-route-server-js.png)
+
+![Audit entries returned by the temporary route](docs/evidence/part-c-docker-and-security/20-postman-audit-logs-response.png)
+
+---
+
+## 16. Demonstration Video
+
+**Part 3 demonstration (YouTube):** https://youtu.be/PASTE_NEW_VIDEO_ID_HERE
+
+The video walks through the features described in sections 7 and 10 to 15.
+
+**Part 2 demonstration (earlier submission):** https://youtu.be/Y0zaNs76LAc
 
 ---
 
@@ -576,4 +906,14 @@ GitHub, 2026. About code scanning with CodeQL. [Online] Available at: https://do
 Gitleaks, 2026. Gitleaks: detect secrets in git repositories. [Online] Available at: https://github.com/gitleaks/gitleaks [Accessed 8 November 2026].
 
 Anchore, 2026. Grype: vulnerability scanner for container images and filesystems. [Online] Available at: https://github.com/anchore/grype [Accessed 8 November 2026].
+
+South African Revenue Service, 2026. Rates of tax for individuals. [Online] Available at: https://www.sars.gov.za/tax-rates/income-tax/rates-of-tax-for-individuals/ [Accessed 9 November 2026].
+
+Docker, 2026. Docker Compose documentation. [Online] Available at: https://docs.docker.com/compose/ [Accessed 9 November 2026].
+
+Winston contributors, 2026. Winston: a logger for just about everything. [Online] Available at: https://github.com/winstonjs/winston [Accessed 9 November 2026].
+
+Better Stack, 2026. Better Stack Logs. [Online] Available at: https://betterstack.com/logs [Accessed 9 November 2026].
+
+Recharts, 2026. Recharts: a composable charting library built on React components. [Online] Available at: https://recharts.org [Accessed 9 November 2026].
 

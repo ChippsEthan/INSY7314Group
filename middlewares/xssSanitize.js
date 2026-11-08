@@ -1,20 +1,36 @@
 // middlewares/xssSanitize.js
-// Custom XSS sanitizer - removes HTML tags from all string inputs
+// Custom XSS sanitizer - removes HTML tags from all string inputs.
+
+const BLOCKED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+const stripTags = (input) => {
+  let output = '';
+  let depth = 0;
+  for (const ch of input) {
+    if (ch === '<') {
+      depth += 1;
+    } else if (ch === '>') {
+      if (depth > 0) depth -= 1;
+    } else if (depth === 0) {
+      output += ch;
+    }
+  }
+  return output.trim();
+};
 
 const sanitizeValue = (value) => {
   if (typeof value === 'string') {
-    // Remove any HTML tags
-    return value.replace(/<[^>]*>/g, '').trim();
+    return stripTags(value);
   }
   if (Array.isArray(value)) {
     return value.map(sanitizeValue);
   }
   if (value && typeof value === 'object') {
-    const sanitized = {};
-    for (const key of Object.keys(value)) {
-      sanitized[key] = sanitizeValue(value[key]);
-    }
-    return sanitized;
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => !BLOCKED_KEYS.has(key))
+        .map(([key, val]) => [key, sanitizeValue(val)])
+    );
   }
   return value;
 };

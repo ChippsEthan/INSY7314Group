@@ -12,7 +12,7 @@ const register = async (req, res, next) => {
   try {
     const { username, email, password, role } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: { $eq: email } });
     if (existingUser) {
       logger.warn('Registration rejected: email already exists', {
         event: 'auth.register.duplicate', email: maskEmail(email), ip: req.ip, requestId: req.id,
@@ -52,7 +52,7 @@ const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: { $eq: email } });
 
     const invalidCredentials = {
       status: 401,

@@ -13,9 +13,11 @@ INSY7314 – POE Part 2. A secure MERN-stack marketplace where Clients book serv
 7. [Part 2 Features and API](#7-part-2-features-and-api)
 8. [Setup: Running the Application](#8-setup-running-the-application)
 9. [Testing](#9-testing)
-10. [Demonstration Video](#10-demonstration-video)
-11. [Appendix A: Part 1 Feedback Checklist](#appendix-a-part-1-feedback-checklist)
-12. [Appendix B: Part 1 Evidence Screenshots](#appendix-b-part-1-evidence-screenshots)
+10. [CI/CD Pipeline](#10-cicd-pipeline)
+11. [Static Code Analysis](#11-static-code-analysis)
+12. [Demonstration Video](#12-demonstration-video)
+13. [Appendix A: Part 1 Feedback Checklist](#appendix-a-part-1-feedback-checklist)
+14. [Appendix B: Part 1 Evidence Screenshots](#appendix-b-part-1-evidence-screenshots)
 
 ---
 
@@ -61,7 +63,7 @@ Stack: MongoDB and Mongoose, Node.js with Express 4 over HTTPS, React 18 (Vite),
 
 This shows the components and where each sits in the MERN stack. The flow diagrams in section 4 show how data moves between them.
 
-<td align="center"><b>Architecture</b><br><img src="docs/diagrams/architecture.png" width="300"></td>
+<p align="center"><b>Architecture</b><br><img src="docs/diagrams/architecture.png" width="300"></p>
 
 
 | MERN layer | Components | Responsibility |
@@ -79,7 +81,7 @@ Rectangles are processes, cylinders are data stores, dotted arrows are failure r
 
 ### 4.1 Registration
 
-<td align="center"><b>Registration</b><br><img src="docs/diagrams/register-dfd.png" width="300"></td>
+<p align="center"><b>Registration</b><br><img src="docs/diagrams/register-dfd.png" width="300"></p>
 
 1. **React form:** react-hook-form checks the fields for usability only. The server never trusts it.
 2. **Perimeter:** HTTPS, Helmet headers, CORS origin check, and a 10 KB body limit (413 if exceeded).
@@ -92,7 +94,7 @@ Rectangles are processes, cylinders are data stores, dotted arrows are failure r
 
 ### 4.2 Login
 
-<td align="center"><b>Login</b><br><img src="docs/diagrams/login-dfd.png" width="300"></td>
+<p align="center"><b>Login</b><br><img src="docs/diagrams/login-dfd.png" width="300"></p>
 
 1. **React form:** checks that email and password are present and well formed.
 2. **Perimeter and sanitise:** same protections as registration.
@@ -101,7 +103,7 @@ Rectangles are processes, cylinders are data stores, dotted arrows are failure r
 5. **Look up** the user by email.
 6. **Compare** the password with the stored hash. An unknown email and a wrong password return the same 401 Invalid email or password., so attackers cannot tell which accounts exist.
 7. **Issue JWT:** payload is only id and role, signed with a secret from the environment, valid 7 days.
-8. **Browser:** React stores the token and an Axios interceptor sends Authorization: Bearer <token> on every later request. The server then runs verifyToken, then requireRole, then an ownership check in the controller.
+8. **Browser:** React stores the token and an Axios interceptor sends `Authorization: Bearer <token>` on every later request. The server then runs verifyToken, then requireRole, then an ownership check in the controller.
 
 ---
 
@@ -125,9 +127,9 @@ We chose JWT because the SPA and API run on different origins and the API is sta
 |---|---|---|---|
 | Password storage | bcrypt, 10 rounds, per-user salt | Plain text; MD5 or SHA-256; Argon2id | Fast hashes can be brute-forced on GPUs. bcrypt is slow by design, mature and well supported. Argon2id is also strong but less established in Node |
 | Input validation | express-validator on the server | Client-only checks; Joi or Zod; manual if checks | The browser can be bypassed, so the server must validate. It plugs into Express middleware and includes sanitisers |
-| NoSQL injection | **express-mongo-sanitize** plus Mongoose type casting | Trusting Mongoose alone | Stops operator payloads such as {"$gt": ""} reaching queries |
+| NoSQL injection | **express-mongo-sanitize** plus Mongoose type casting | Trusting Mongoose alone | Stops operator payloads such as `{"$gt": ""}` reaching queries |
 | XSS | Server tag stripping, React escaping, DOMPurify, CSP | One layer only | Overlapping layers. Output encoding is the primary defence |
-| Brute force and abuse | express-rate-limit: login 5 failed per 15 min, register 5 per 15 min, bookings 10 per hour | Account lockout; CAPTCHA; WAF | Lockout lets attackers lock out victims on purpose. CAPTCHA needs a third party. A WAF suits production |
+| Brute force and abuse | express-rate-limit: login 5 failed per 15 min, register 5 per 15 min, bookings 10 per hour, all other API routes 300 per 15 min | Account lockout; CAPTCHA; WAF | Lockout lets attackers lock out victims on purpose. CAPTCHA needs a third party. A WAF suits production |
 | Headers | Helmet (CSP, HSTS, nosniff, frame protection, hides X-Powered-By) | Hand-set headers | Easy to get wrong manually |
 | Access control | RBAC (requireRole) plus ownership checks in controllers | Hiding buttons in React; full ABAC | UI hiding is cosmetic. Ownership checks stop one freelancer editing another's gig |
 | Transport | HTTPS (self-signed in development) | Plain HTTP | Protects passwords and tokens in transit. Production would use a CA certificate |
@@ -140,12 +142,12 @@ We chose JWT because the SPA and API run on different origins and the API is sta
 
 ## 6. Security Risks and Mitigations
 
-<td align="center"><b>Security</b><br><img src="docs/diagrams/defence-in-depth.png" width="300"></td>
+<p align="center"><b>Security</b><br><img src="docs/diagrams/defence-in-depth.png" width="300"></p>
 
 Key:
 1. "Transport: HTTPS" as L1 
 2. "Headers: Helmet and CSP" as L2
-3. "CORS allow-list" as L3 #CCDEC8
+3. "CORS allow-list" as L3
 4. "10 KB body limit and rate limiting" as L4
 5. "NoSQL and XSS sanitising" as L5
 6. "express-validator" as L6
@@ -158,13 +160,13 @@ Key:
 |---|---|---|---|
 | Broken access control (A01) | Client creates gigs, freelancer edits another's gig, client reads income | requireRole, ownership checks | Newman folders 1 and 3 |
 | Cryptographic failures (A02) | Database leak, traffic sniffing | bcrypt, no password in responses, HTTPS, .env | Newman login tests |
-| NoSQL injection (A03) | {"email": {"$gt": ""}} bypasses login | mongo-sanitize, Mongoose, validator | Newman folder 4 |
-| XSS (A03) | <script> in a gig title runs in other browsers | Tag stripping, React escaping, DOMPurify, CSP | Newman folder 4, frontend test |
+| NoSQL injection (A03) | `{"email": {"$gt": ""}}` bypasses login | mongo-sanitize, Mongoose, validator, `$eq` on login and register lookups, typed field whitelist on gig update | Newman folder 4, CodeQL (section 11) |
+| XSS (A03) | `<script>` in a gig title runs in other browsers | Tag stripping, React escaping, DOMPurify, CSP | Newman folder 4, frontend test |
 | Abuse and brute force (A04, A07) | Password guessing, spam accounts or bookings | Rate limiters, strong password rules, identical login errors | Newman folder 5 (429) |
 | Forged tokens (A07) | Tampered or unsigned JWT | Signed HS256 JWT with expiry | Newman folder 4 (401) |
 | Misconfiguration (A05) | Missing headers, verbose errors | Helmet, CORS allow-list, generic errors | Newman setup folder |
 | Denial of service | Huge bodies, floods | 10 KB limit (413), rate limits | Newman folder 4 |
-| Vulnerable components (A06) | Outdated packages | Locked versions, run npm audit before release | Manual |
+| Vulnerable components (A06) | Outdated packages | Locked versions. `npm audit`, Gitleaks and a Grype image scan run in the CI pipeline on every push | CI pipeline (section 10) |
 
 Known limitations and next steps
 
@@ -172,7 +174,6 @@ Known limitations and next steps
 - Token is in localStorage. An httpOnly cookie plus CSRF token would remove XSS token theft.
 - Helmet's default CSP is used. A custom policy should be set on the host that serves the React app.
 - Rate-limit counters are in memory. They reset on restart. A Redis store would fix this.
-- updateGig passes req.body to Mongoose (mass-assignment risk). It should whitelist title, description, price and category.
 - Gig and booking routes lack express-validator rules. A negative price or malformed ID returns a generic 500 instead of a precise 400.
 - Stack traces are returned when NODE_ENV=development. Always run production with NODE_ENV=production.
 - The booking and income update are separate writes. A MongoDB transaction would make them atomic.
@@ -186,9 +187,9 @@ Known limitations and next steps
 - **Bookings:** a client books a gig and the price is copied from the gig. Payment is simulated.
 - **Transactions:** every booking creates a transaction linking client, freelancer and booking.
 - **Income:** the freelancer's income rises by the gig price on each booking. GET /api/users/me/income returns the total and the transaction list.
-- **Security additions:** NoSQL and XSS sanitising, rate limiting (login, register, bookings), Helmet and CSP, RBAC with ownership checks.
+- **Security additions:** NoSQL and XSS sanitising, rate limiting (login, register, bookings, plus a general limiter on all other routes), Helmet and CSP, RBAC with ownership checks.
 
-Base URL https://localhost:5000/api. Protected routes need Authorization: Bearer <token>. Errors look like { "status": 403, "message": "..." }, and validation errors add "errors": [{ "field", "message" }].
+Base URL https://localhost:5000/api. Protected routes need `Authorization: Bearer <token>`. Errors look like { "status": 403, "message": "..." }, and validation errors add "errors": [{ "field", "message" }].
 
 | Endpoint | Access | Notes |
 |---|---|---|
@@ -222,38 +223,47 @@ Base URL https://localhost:5000/api. Protected routes need Authorization: Bearer
 ### Backend (Terminal 1, project root)
 
 1. Clone and install:
-   
-   git clone https://github.com/ChippsEthan/INSY7314Group.git  
-   cd INSY7314Group  
+
+   ```bash
+   git clone https://github.com/ChippsEthan/INSY7314Group.git
+   cd INSY7314Group
    npm install
-   
-2. Create .env from the template (cp .env.example .env, or copy .env.example .env in PowerShell) and fill it in:
-   env
-   
-   PORT=5000  
-   NODE_ENV=development  
-   JWT_SECRET=a_long_random_string_of_at_least_32_characters  
-   SALT_ROUNDS=10  
-   MONGO_URI=mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/hustlehub?appName=Cluster0  
-   
-   For a local database use mongodb://localhost:27017/hustlehub.
+   ```
+
+2. Create `.env` from the template (`cp .env.example .env`, or `copy .env.example .env` in PowerShell) and fill it in:
+
+   ```env
+   PORT=5000
+   NODE_ENV=development
+   JWT_SECRET=a_long_random_string_of_at_least_32_characters
+   SALT_ROUNDS=10
+   MONGO_URI=mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/hustlehub?appName=Cluster0
+   ```
+
+   For a local database use `mongodb://localhost:27017/hustlehub`.
+
 3. Generate the HTTPS certificate (press Enter through the prompts):
-   
+
+   ```bash
    openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
-   
+   ```
+
 4. Start the API. You should see MongoDB connected successfully and the HTTPS address:
-  
+
+   ```bash
    npm start
-   
+   ```
+
 5. Trust the certificate once: open <https://localhost:5000/api/health> in the browser, click **Advanced**, then **Proceed**.
 
 ### Frontend (Terminal 2)
 
-
+```bash
 cd client
 npm install
 cp .env.example .env     # contains VITE_API_URL=https://localhost:5000
 npm run dev
+```
 
 Open <http://localhost:5173>. Register a freelancer and a client (use a private window for the second), post a gig as the freelancer, book it as the client, then check the freelancer dashboard.
 
@@ -307,10 +317,14 @@ HustleHub_Part2.postman_collection.json has **47 requests and 88 assertions**. I
 
 1. Start the API (npm start). It must be a fresh start, because the rate limiters are held in memory and the last folder fills the login limiter on purpose. Restart the server before every run.
 2. In a second terminal, from the project root:
-   bash
+
+   ```bash
    npm run test:api
-   
-   This runs newman run HustleHub_Part2.postman_collection.json --insecure (--insecure is needed for the self-signed certificate).
+   ```
+
+   This runs `newman run HustleHub_Part2.postman_collection.json --insecure` (`--insecure` is needed for the self-signed certificate).
+
+These same Newman tests also run automatically in the CI pipeline against a fresh API and database on every push (see [section 10](#10-cicd-pipeline)).
 
 Result: 47 requests, 88 assertions, 0 failed.
 
@@ -324,23 +338,126 @@ Result: 47 requests, 88 assertions, 0 failed.
 
 React Testing Library with **Vitest** (the Vite-native runner, with the same describe / it / expect API as Jest).
 
-bash
+```bash
 cd client
 npm test
+```
 
 
 | File | Covers |
 |---|---|
 | src/pages/components.test.jsx (10 tests) | LoginPage renders fields and shows "required" errors when empty. GigCard shows title, price and category. Navbar shows Login and Register when logged out, and username, Logout and freelancer links when logged in. **BookingConfirmationPage** shows the confirmation message, gig title and price |
-| src/components/rbac.test.jsx (5 tests) | PrivateRoute redirects logged-out users to /login, redirects a client away from a freelancer route and renders for the correct role. Navbar hides freelancer links from clients. GigCard removes <script> content (XSS) |
+| src/components/rbac.test.jsx (5 tests) | PrivateRoute redirects logged-out users to /login, redirects a client away from a freelancer route and renders for the correct role. Navbar hides freelancer links from clients. GigCard removes `<script>` content (XSS) |
 
-Result: 2 files, 15 tests, all passing. The yellow React Router "Future Flag Warning" lines are harmless notices.
+Result: 2 files, 15 tests, all passing. The frontend tests also run in the CI pipeline on every push. The yellow React Router "Future Flag Warning" lines are harmless notices.
 
 ![Frontend tests passing](docs/evidence/frontend-tests.png)
 
 ---
 
-## 10. Demonstration Video
+## 10. CI/CD Pipeline
+
+[![CI Pipeline](https://github.com/ChippsEthan/INSY7314Group/actions/workflows/ci.yml/badge.svg)](https://github.com/ChippsEthan/INSY7314Group/actions/workflows/ci.yml)
+
+The project uses **GitHub Actions**. The workflow files are in `.github/workflows/`:
+
+| File | Purpose |
+|---|---|
+| `ci.yml` | Install, test, build, API tests, security checks and the Docker stack |
+| `codeql.yml` | Static code analysis with CodeQL (section 11) |
+
+### 10.1 When it runs
+
+`ci.yml` runs automatically on every **push** and every **pull request**. A newer push to the same branch cancels the older run. The workflow only has read access to the repository (`permissions: contents: read`).
+
+### 10.2 Jobs
+
+| Job | What it does |
+|---|---|
+| Backend | `npm ci`, `npm test` (14 tests), then a build check that syntax-checks every backend source file with `node --check` |
+| Frontend | `npm ci`, `npm test` (Vitest), `npm run build` |
+| Newman API tests | Runs after the backend job. Starts the API against a MongoDB 7 service container with a throw-away HTTPS certificate and JWT secret, installs Newman and runs `HustleHub_Part2.postman_collection.json` |
+| Security | `npm audit` on the backend and frontend (production dependencies, fails on high or critical) and a Gitleaks secret scan |
+| Docker | Runs after the backend and frontend jobs. Builds both images, starts the whole stack with `docker compose up --build`, smoke-tests the API (`/api/health`) and the frontend, then scans both images with Grype |
+
+### 10.3 The pipeline fails when a check fails
+
+Every step returns an exit code, so a failing test, audit, scan or build turns the job red and marks the whole run as failed. To prove this, a test expectation was broken on purpose and the run failed:
+
+![Failing pipeline run](docs/evidence/failing-run.png)
+
+With the test restored, every job passed:
+
+![Passing pipeline run](docs/evidence/Runningtest.png)
+
+### 10.4 Security checks in the pipeline
+
+| Check | Tool | What it catches | Fails the run when |
+|---|---|---|---|
+| Dependency audit | `npm audit --omit=dev` (backend and client) | Known vulnerabilities in production npm packages | A high or critical advisory exists |
+| Secret scan | Gitleaks | Passwords, keys and tokens committed to the repository | A secret is detected in the commits being pushed |
+| Container image scan | Grype | Known vulnerabilities in the operating system packages, Node.js and npm packages inside the Docker images | A critical vulnerability with an available fix exists |
+| Full stack build | Docker and Docker Compose | Broken images or a stack that does not start | A build fails or the health checks fail |
+| Static analysis | CodeQL | Insecure code patterns (section 11) | Reported as alerts in the Security tab |
+
+### 10.5 Secrets in the pipeline
+
+No real secrets are stored in the repository or in the workflow files. The HTTPS certificate and the `JWT_SECRET` used by the Newman and Docker jobs are generated fresh on every run and are thrown away when the run ends. The database used in the pipeline is a temporary container, never the Atlas database.
+
+### 10.6 What the pipeline found and what was fixed
+
+| Finding | Where | Fix |
+|---|---|---|
+| Critical and high advisories in `tar`, reached through `bcrypt` 5.x | Backend dependencies | Upgraded `bcrypt` to 6.x |
+| Critical `proxy-addr` and moderate `qs` advisories | Backend dependencies (via Express) | Updated with `npm audit fix` |
+| Critical `dompurify` and high `follow-redirects` advisories | Frontend dependencies | Updated with `npm audit fix` |
+| Critical vulnerabilities in the Node.js 20 base image, OpenSSL (`libssl3`, `libcrypto3`), `zlib` and the `tar` bundled with npm | Backend Docker image | Moved to `node:22-alpine`, patched packages with `apk upgrade`, and removed npm from the runtime image because the running API does not need it |
+| Critical `zlib` vulnerability | Frontend (nginx) Docker image | Added `apk upgrade` to the nginx stage |
+
+Reviewed and accepted (moderate severity, below the pipeline's fail threshold):
+
+| Finding | Why it is accepted |
+|---|---|
+| `uuid` buffer bounds check | The advisory covers `v3`, `v5` and `v6` when a buffer is passed in. The API only calls `v4()` (request IDs in `middlewares/requestLogger.js`), so it is not exploitable |
+| `react-router` open redirect and server-side rendering issues | Fixing it needs a breaking major upgrade. The client is a Vite single-page app with no server-side rendering. To be revisited in the next release |
+
+---
+
+## 11. Static Code Analysis
+
+**Tool:** GitHub **CodeQL**, run by `.github/workflows/codeql.yml` on every push and pull request to `main` and weekly (Mondays 03:00 UTC). It uses the `security-and-quality` query suite for JavaScript, covering both the Express API and the React client.
+
+**Why CodeQL:** it follows data from where it enters the application (request bodies, parameters) to where it is used (database queries, regular expressions, property writes), so it finds injection and sanitisation flaws that a style linter would miss. Results appear in the repository's **Security** tab under Code scanning.
+
+### 11.1 Results
+
+The first scan reported **23 alerts**. All of them were reviewed and resolved:
+
+![CodeQL results](docs/evidence/Code%20scanning.png)
+
+| Alert (severity) | Where | What it means | Fix |
+|---|---|---|---|
+| Missing rate limiting (High) | `server.js`, `routes/authRoutes.js`, `routes/gigRoutes.js`, `routes/userRoutes.js` | Routes that touch the database or check permissions had no limiter, so they could be flooded | Added a general `apiLimiter` (300 requests per 15 minutes per IP) on `/api/auth`, `/api/gigs` and `/api/users`. It is logged as a security event like the other limiters |
+| Database query built from user-controlled sources (High) | `controllers/authController.js`, `controllers/gigController.js`, `controllers/bookingController.js` | Request data went straight into MongoDB queries, so an object such as `{"$gt": ""}` could change the query | Login and register lookups use `{ email: { $eq: email } }`. Gig update copies only `title`, `description`, `price` and `category`, each type-checked. Booking rejects a `gigId` that is not a string |
+| Incomplete multi-character sanitization (High) | `middlewares/xssSanitize.js` | Removing tags with one regular expression pass can leave a tag behind (`<<script>script>` becomes `<script>`) | Replaced the regular expression with a single pass that tracks tag depth, so nothing is left behind |
+| Polynomial regular expression on uncontrolled data (High) | `middlewares/xssSanitize.js` | A crafted string of repeated `<` characters could make the old regular expression run very slowly (ReDoS) | The new sanitiser uses no regular expressions and runs in linear time (200 000 `<` characters in about 13 ms) |
+| Remote property injection (High) | `middlewares/xssSanitize.js` | A user-supplied key such as `__proto__` was used as a property name | Objects are rebuilt with `Object.fromEntries`, and `__proto__`, `constructor` and `prototype` keys are dropped |
+| Unused variable or import (Note) | `client/src/pages/RegisterPage.jsx`, `client/src/pages/components.test.jsx` | Dead code that hides mistakes | Removed the unused `res` variable and the unused `beforeEach` import |
+
+Two further fixes came out of reviewing these findings:
+
+- **Mass assignment:** the old gig update passed the whole request body to Mongoose, so a freelancer could have overwritten fields such as the gig's owner. The field whitelist closes this.
+- **Unprotected test route:** a temporary `/api/audit-logs` route returned every audit log entry to anyone, without logging in. It was removed.
+
+Behaviour note: the sanitiser now removes an unclosed `<` and the text after it. This is the safe choice for a security filter. Output encoding in React remains the primary XSS defence.
+
+### 11.2 Status
+
+After these fixes CodeQL reports **no open alerts** on `main`. The Newman API tests, the frontend tests and the Docker build all still pass.
+
+---
+
+## 12. Demonstration Video
 
 YouTube link: https://youtu.be/Y0zaNs76LAc
 
@@ -418,29 +535,29 @@ we have a global error handler that will catch all exceptions this will return a
 
 ##### Registration
 
-######## Success
+###### Success
 <img width="940" height="462" alt="image" src="https://github.com/user-attachments/assets/51933216-b359-439d-a05c-7dfc15df18c2" />
 
-######## Duplicate
+###### Duplicate
 <img width="940" height="462" alt="image" src="https://github.com/user-attachments/assets/0aa70b93-9ae7-4eff-82d3-ef8eb626bb98" />
 
-######## Missing a password
+###### Missing a password
 <img width="940" height="465" alt="image" src="https://github.com/user-attachments/assets/d2866ddb-cca2-465b-9c4c-10408aa51cfb" />
 
 ##### Logging in
 
-######## Success
+###### Success
 <img width="940" height="469" alt="image" src="https://github.com/user-attachments/assets/5c902384-9f7e-44e2-9adc-9bcb51b232af" />
 
-######## Failed login (wrong password)
+###### Failed login (wrong password)
 <img width="940" height="466" alt="image" src="https://github.com/user-attachments/assets/6a068370-f2a0-430c-9292-7d807ac68f5d" />
 
 ##### Protected Route 
 
-######## With a token
+###### With a token
 <img width="940" height="465" alt="image" src="https://github.com/user-attachments/assets/8ba394b3-0599-4580-8e4a-07bc4cff4309" />
 
-######## Without a token
+###### Without a token
 <img width="940" height="470" alt="image" src="https://github.com/user-attachments/assets/f48d3776-4b6f-4570-b12b-1677d07c2164" />
 
 
@@ -451,4 +568,12 @@ we have a global error handler that will catch all exceptions this will return a
 We declare we used AI to help with the formatting and styling of the read me file.
 
 Diagrams.net, 2026. Diagrams.net – Free Online Diagram Software. [Online] Available at: Diagrams.net [Accessed 12 October 2026].
+
+GitHub, 2026. GitHub Actions documentation. [Online] Available at: https://docs.github.com/en/actions [Accessed 8 November 2026].
+
+GitHub, 2026. About code scanning with CodeQL. [Online] Available at: https://docs.github.com/en/code-security/code-scanning [Accessed 8 November 2026].
+
+Gitleaks, 2026. Gitleaks: detect secrets in git repositories. [Online] Available at: https://github.com/gitleaks/gitleaks [Accessed 8 November 2026].
+
+Anchore, 2026. Grype: vulnerability scanner for container images and filesystems. [Online] Available at: https://github.com/anchore/grype [Accessed 8 November 2026].
 

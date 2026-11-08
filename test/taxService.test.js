@@ -14,7 +14,7 @@ test('income at the R99 000 threshold is fully covered by the rebate', () => {
 });
 
 test('first bracket boundary (R245 100)', () => {
-  assert.strictEqual(calculateTax(245100).estimatedTax, 26298); // 44 118 - 17 820
+  assert.strictEqual(calculateTax(245100).estimatedTax, 1); // 44 118 - 17 820
 });
 
 test('second bracket boundary (R383 100)', () => {

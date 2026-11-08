@@ -90,7 +90,14 @@ const bookingLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  handler: rateLimitHandler('api'),
+  message: { status: 429, message: 'Too many requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 // Health check
 app.get('/api/health', (req, res) => {
   res.status(200).json({
@@ -103,21 +110,10 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth/register', registerLimiter);
 
-app.use('/api/auth', authRoutes);
-app.use('/api/gigs', gigRoutes);
-app.use('/api/bookings', bookingLimiter, bookingRoutes);
-app.use('/api/users', userRoutes);
-
-// TEMPORARY ROUTE FOR SCREENSHOT
-app.get('/api/audit-logs', async (req, res) => {
-  try {
-    const logs = await require('./models/AuditLog').find().sort({ timestamp: -1 });
-    res.json(logs);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
+app.use('/api/auth', apiLimiter, authRoutes);
+app.use('/api/gigs', apiLimiter, gigRoutes);
+app.use('/api/bookings', apiLimiter, bookingLimiter, bookingRoutes);
+app.use('/api/users', apiLimiter, userRoutes);
 
 // Error handling
 app.use(notFound);

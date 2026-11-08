@@ -85,9 +85,16 @@ exports.updateGig = async (req, res, next) => {
       });
     }
 
+   const { title, description, price, category } = req.body;
+    const updates = {};
+    if (typeof title === 'string') updates.title = title;
+    if (typeof description === 'string') updates.description = description;
+    if (typeof price === 'number') updates.price = price;
+    if (typeof category === 'string') updates.category = category;
+
     const updatedGig = await Gig.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updates,
       { new: true, runValidators: true }
     );
 

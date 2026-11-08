@@ -219,3 +219,14 @@ jobs:
           fail-build: true
           severity-cutoff: critical
           only-fixed: true
+
+
+
+
+
+
+
+      - name: Show backend image findings (only runs on failure)
+        if: failure()
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock anchore/grype:latest hustlehub-backend:ci --only-fixed -q | grep -E "NAME|Critical" || true

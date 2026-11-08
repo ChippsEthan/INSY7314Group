@@ -15,7 +15,7 @@ export default function RegisterPage() {
     setServerError('');
     setLoading(true);
     try {
-      const res = await api.post('/api/auth/register', data);
+      await api.post('/api/auth/register', data);
       // Auto-login after successful registration
       const loginRes = await api.post('/api/auth/login', {
         email: data.email,

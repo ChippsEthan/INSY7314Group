@@ -229,4 +229,4 @@ jobs:
       - name: Show backend image findings (only runs on failure)
         if: failure()
         run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock anchore/grype:latest hustlehub-backend:ci --only-fixed -q | grep -E "NAME|Critical" || true
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock anchore/grype:latest hustlehub-frontend:ci --only-fixed -q | grep -E "NAME|Critical" || true

@@ -10,6 +10,10 @@ const { logEvent } = require('../utils/auditLogger'); // ADDED
 exports.createBooking = async (req, res, next) => {
   try {
     const { gigId } = req.body;
+    
+    if (typeof gigId !== 'string') {
+      return res.status(400).json({ status: 400, message: 'A valid gigId is required.' });
+    }
 
     const gig = await Gig.findById(gigId);
     if (!gig) {

@@ -895,7 +895,7 @@ we have a global error handler that will catch all exceptions this will return a
 
 ## Reference
 
-We declare we used AI to help with the formatting and styling of the read me file.
+We declare we used AI to help with the formatting and styling of the read me file , it was also used in help with trouble shooting and formatting of the code to make it easier for each group member to read and understand the code. AI was used as a supporting role in our project.
 
 Diagrams.net, 2026. Diagrams.net – Free Online Diagram Software. [Online] Available at: Diagrams.net [Accessed 12 October 2026].
 

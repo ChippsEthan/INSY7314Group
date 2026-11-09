@@ -808,7 +808,7 @@ Every push to `main` runs a secret scan (Gitleaks), a dependency audit (`npm aud
 
 ## 16. Demonstration Video
 
-**Part 3 demonstration (YouTube):** https://youtu.be/PASTE_NEW_VIDEO_ID_HERE
+**Part 3 demonstration (YouTube):** https://youtu.be/fhkVOYdgRq0
 
 The video walks through the features described in sections 7 and 10 to 15.
 

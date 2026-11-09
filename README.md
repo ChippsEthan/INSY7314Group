@@ -2,6 +2,8 @@
 
 INSY7314 – POE Part 3. A secure MERN-stack marketplace where Clients book services from Freelancers. Part 1 built the secure authentication backend. Part 2 added MongoDB, gigs, bookings, transactions, income tracking, more security middleware, a React frontend and automated tests. Part 3 adds a South African income-tax estimate and income dashboard, structured logging to a cloud platform, Docker, account lockout and an audit trail, a GitHub Actions CI/CD pipeline and static code analysis.
 
+**Repository:** https://github.com/ChippsEthan/INSY7314Group
+
 ## Table of Contents
 
 1. [System Overview](#1-system-overview)
@@ -18,7 +20,7 @@ INSY7314 – POE Part 3. A secure MERN-stack marketplace where Clients book serv
 12. [Tax Estimate and Income Dashboard](#12-tax-estimate-and-income-dashboard)
 13. [Logging and Monitoring](#13-logging-and-monitoring)
 14. [Docker](#14-docker)
-15. [Additional Security Features](#15-additional-security-features)
+15. [Own Security Features](#15-own-security-features)
 16. [Demonstration Video](#16-demonstration-video)
 17. [Appendix A: Part 1 Feedback Checklist](#appendix-a-part-1-feedback-checklist)
 18. [Appendix B: Part 1 Evidence Screenshots](#appendix-b-part-1-evidence-screenshots)
@@ -39,7 +41,7 @@ Our solution. HustleHub+ is a marketplace that treats security as a core require
 | Marketplace | Gig CRUD, bookings, transactions, freelancer income | 2 |
 | Hardening | Rate limiting, NoSQL and XSS sanitising, Helmet and CSP, HTTPS, CORS allow-list, safe errors | 1 and 2 |
 | Frontend | React app: register, login, browse, book, dashboard | 2 |
-| Testing | Postman and Newman (API), React Testing Library with Vitest (UI), Node test runner (backend unit tests) | 2 and 3 |
+| Testing | Postman and Newman (API), React Testing Library with Vitest (UI unit and integration tests), Node test runner (backend unit tests) | 2 and 3 |
 | Tax and dashboard | Estimated South African income tax and a dashboard with summary cards and charts | 3 |
 | Logging | Winston logs with secrets redacted, shipped to Better Stack | 3 |
 | Containers | Docker images and a Compose stack for the API, frontend and database | 3 |
@@ -216,7 +218,7 @@ Known limitations and next steps
 - **Transactions:** every booking creates a transaction linking client, freelancer and booking.
 - **Income:** the freelancer's income rises by the gig price on each booking. GET /api/users/me/income returns the total and the transaction list.
 - **Security additions:** NoSQL and XSS sanitising, rate limiting (login, register, bookings, plus a general limiter on all other routes), Helmet and CSP, RBAC with ownership checks.
-- **Part 3 additions:** a tax estimate and income dashboard ([section 12](#12-tax-estimate-and-income-dashboard)), structured logging to Better Stack ([section 13](#13-logging-and-monitoring)), Docker ([section 14](#14-docker)), account lockout and an audit trail ([section 15](#15-additional-security-features)), and the CI/CD pipeline and static analysis ([section 10](#10-cicd-pipeline) and [section 11](#11-static-code-analysis)).
+- **Part 3 additions:** a tax estimate and income dashboard ([section 12](#12-tax-estimate-and-income-dashboard)), structured logging to Better Stack ([section 13](#13-logging-and-monitoring)), Docker ([section 14](#14-docker)), account lockout and an audit trail ([section 15](#15-own-security-features)), and the CI/CD pipeline and static analysis ([section 10](#10-cicd-pipeline) and [section 11](#11-static-code-analysis)).
 
 Base URL https://localhost:5000/api. Protected routes need `Authorization: Bearer <token>`. Errors look like { "status": 403, "message": "..." }, and validation errors add "errors": [{ "field", "message" }].
 
@@ -328,6 +330,17 @@ Open <http://localhost:5173>. Register a freelancer and a client (use a private 
     <td></td>
   </tr>
 </table>
+
+### Quick evaluation guide
+
+1. Start the application, either as described above or with Docker ([section 14](#14-docker)).
+2. Open <http://localhost:5173> (or <http://localhost:3000> with Docker) and go to **Register**. Create one **freelancer** and one **client** account (use a private window for the second one).
+3. As the freelancer, choose **Post a Gig** and create a gig.
+4. As the client, open **Browse Gigs**, open the gig and book it. The booking appears under **My Bookings**, and a transaction is recorded.
+5. As the freelancer, open **Dashboard** to see the booking in the income, the estimated tax and the charts ([section 12](#12-tax-estimate-and-income-dashboard)).
+6. Try a wrong password five times to see rate limiting and account lockout ([section 15.1](#151-account-lockout)). Watch the console, `logs/app.log` and Better Stack for the matching log entries ([section 13](#13-logging-and-monitoring)).
+7. Run the tests: `npm test` (backend unit tests), `npm run test:api` (Newman, with the API running) and `cd client && npm test` (frontend). See [section 9](#9-testing).
+8. Open the repository's **Actions** tab for the pipeline runs and the **Security** tab for the CodeQL results ([section 10](#10-cicd-pipeline) and [section 11](#11-static-code-analysis)).
 
 ---
 
@@ -509,6 +522,8 @@ After these fixes CodeQL reports **no open alerts** on `main`. The Newman API te
 Freelancers can see how much they have earned and an estimate of the income tax on it, as South African rand amounts for the **2026/27 tax year** (1 March 2026 to 28 February 2027). The figures come from the SARS *Rates of Tax for Individuals*.
 
 ### 12.1 Tax logic
+
+**Research:** South Africa taxes individuals with a progressive system. Income is split into bands (brackets), and each band is taxed at its own marginal rate, from 18% up to 45%. A fixed annual **rebate** is then subtracted from the tax. This is why the first R99,000 of income is effectively tax-free for a person under 65. Freelancers are normally provisional taxpayers, which means they pay tax in advance during the year and file an annual return. The dashboard estimates the annual liability that those payments are set against. Provisional tax payments themselves are not modelled. The brackets and rebate used here are the published SARS figures for 2026/27.
 
 The calculation is in `services/taxService.js`. Income is treated as one year of taxable income, and tax is worked out in three steps:
 
@@ -702,6 +717,10 @@ Server start-up and the health check:
 
 ### 14.4 Evidence
 
+The pipeline's Docker job builds both images, starts the whole Compose stack, checks that the API (`/api/health`) and the frontend respond, and only then scans the images. The run below passed, so both containers were working inside the pipeline:
+
+![Pipeline run with the Docker job passing](docs/evidence/Runningtest.png)
+
 Three containers running in Docker Desktop:
 
 ![Docker Desktop with three containers running](docs/evidence/part-c-docker-and-security/01-docker-desktop-three-containers-running.png)
@@ -716,9 +735,9 @@ Building and starting the stack:
 
 ---
 
-## 15. Additional Security Features
+## 15. Own Security Features
 
-Two features were added beyond the minimum requirements: **account lockout** and an **audit trail**.
+These are our own security features, added on top of the security controls the POE already requires (password hashing, JWT, validation, rate limiting, HTTPS and RBAC). There are two in the application, **account lockout** and an **audit trail**, and a third group of checks in the pipeline.
 
 ### 15.1 Account lockout
 
@@ -780,6 +799,10 @@ Evidence:
 ![Temporary route used to display the entries (since removed)](docs/evidence/part-c-docker-and-security/19-temporary-audit-logs-route-server-js.png)
 
 ![Audit entries returned by the temporary route](docs/evidence/part-c-docker-and-security/20-postman-audit-logs-response.png)
+
+### 15.3 Automated security checks in the pipeline
+
+Every push to `main` runs a secret scan (Gitleaks), a dependency audit (`npm audit`), a container image vulnerability scan (Grype) and CodeQL static analysis. These are our own additions to the pipeline and are not required by the POE. They catch committed secrets, vulnerable packages and base images, and insecure code before it is merged. The checks, thresholds and the real findings they caught are in [section 10.4](#104-security-checks-in-the-pipeline) and [section 10.6](#106-what-the-pipeline-found-and-what-was-fixed). The pipeline results are shown in [section 10.3](#103-the-pipeline-fails-when-a-check-fails).
 
 ---
 
@@ -916,4 +939,3 @@ Winston contributors, 2026. Winston: a logger for just about everything. [Online
 Better Stack, 2026. Better Stack Logs. [Online] Available at: https://betterstack.com/logs [Accessed 9 November 2026].
 
 Recharts, 2026. Recharts: a composable charting library built on React components. [Online] Available at: https://recharts.org [Accessed 9 November 2026].
-

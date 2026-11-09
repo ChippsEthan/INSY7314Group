@@ -2,7 +2,8 @@
 
 INSY7314 – POE Part 3. A secure MERN-stack marketplace where Clients book services from Freelancers. Part 1 built the secure authentication backend. Part 2 added MongoDB, gigs, bookings, transactions, income tracking, more security middleware, a React frontend and automated tests. Part 3 adds a South African income-tax estimate and income dashboard, structured logging to a cloud platform, Docker, account lockout and an audit trail, a GitHub Actions CI/CD pipeline and static code analysis.
 
-**Repository:** https://github.com/ChippsEthan/INSY7314Group
+**Repository:** https://github.com/ChippsEthan/INSY7314Group  
+Youtube link : https://youtu.be/fhkVOYdgRq0  
 
 ## Table of Contents
 

@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_ENV: test
-      JWT_SECRET: ci-only-placeholder-value-not-a-real-secret-0000
+      
     steps:
       - uses: actions/checkout@v4
 
@@ -31,6 +31,9 @@ jobs:
       - name: Install backend dependencies
         run: npm ci
 
+      - name: Create a throw-away JWT secret
+        run: echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+           
       - name: Run backend tests
         run: npm test
 
